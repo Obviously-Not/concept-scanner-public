@@ -11,7 +11,7 @@ work since `v1.0.5` has not been cut as a public release. It is internal
 reliability and quality work: a provider-agnostic model registry with
 fail-fast id resolution, a consolidated remediation pass over the open issues,
 and the two-phase (distill then extract) generation mode behind an off-by-default
-flag. See `docs/plans/` for the full record.
+flag.
 
 ### Added
 
@@ -166,10 +166,6 @@ flag. See `docs/plans/` for the full record.
   OpenAI-compatible remote endpoint) and the GitHub Action, publishing the
   container images to GHCR and Docker Hub.
 
-[Unreleased]: https://github.com/Obviously-Not/concept-scanner/compare/v1.0.5...HEAD
-[1.0.5]: https://github.com/Obviously-Not/concept-scanner/releases/tag/v1.0.5
-[1.0.4]: https://github.com/Obviously-Not/concept-scanner/releases/tag/v1.0.4
-[1.0.3]: https://github.com/Obviously-Not/concept-scanner/releases/tag/v1.0.3
-[1.0.2]: https://github.com/Obviously-Not/concept-scanner/releases/tag/v1.0.2
-[1.0.1]: https://github.com/Obviously-Not/concept-scanner/releases/tag/v1.0.1
-[1.0.0]: https://github.com/Obviously-Not/concept-scanner/releases/tag/v1.0.0
+Releases from the next tag onward are published to this repository. Versions
+1.0.0 through 1.0.5 predate the split and were released from the source
+repository, which is private, so they have no page here.

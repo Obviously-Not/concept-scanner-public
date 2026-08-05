@@ -4,7 +4,8 @@
 
 Please report security issues privately. Do not open a public GitHub issue.
 
-Use GitHub's **private vulnerability reporting**: navigate to the [Security tab](https://github.com/Obviously-Not/concept-scanner/security) of this repository and click **Report a vulnerability**. This routes the report directly to the maintainers without making it public.
+Use GitHub's **private vulnerability reporting**: navigate to the Security tab of this repository and click **Report a vulnerability**. This routes the report directly to the maintainers without making it public.
+Direct link: [Security tab](https://github.com/Obviously-Not/concept-scanner-public/security).
 
 ## Scope
 

@@ -1,10 +1,17 @@
 # Concept Scanner
 
+> **This is a distribution repository.** It carries the documentation, the
+> GitHub Action, and the released binaries. The source lives in a private
+> repository and is not published here, so there is nothing to build or send a
+> pull request against: every file here is generated from the source repo on
+> each release and is overwritten by the next one. Bug reports and feature
+> requests are welcome in this repo's issue tracker.
+
 Local-first **engineering concept scanner** for codebases. Point it at a repository or directory and it surfaces distinctive technical mechanisms ("concepts"), scores them on four core engineering-quality axes (technical distinctiveness, implementation depth, problem specificity, generality) plus supplementary signals, and saves the results locally for you to review.
 
 The JSON output is shape-matched to the [Obviously-Not platform's](https://github.com/Obviously-Not) `code_scan` pipeline (`CharacterizationOutputSchema` v1.3.0) — engineering vocabulary only, no legal-statute language. Compatibility is by field-level inspection; it has not yet been validated against a live platform parser. Legal review is a separate, downstream step performed by qualified humans.
 
-By default all analysis runs against a local [Ollama](https://ollama.ai) model, so **your code stays on your machine**: no API keys, no cloud calls, no per-scan cost. You can optionally point it at a remote OpenAI-compatible provider (`--provider openai-compatible`), which sends your source to that endpoint; see [PROVIDERS.md](PROVIDERS.md).
+By default all analysis runs against a local [Ollama](https://ollama.ai) model, so **your code stays on your machine**: no API keys, no cloud calls, no per-scan cost. You can optionally point it at a remote OpenAI-compatible provider (`--provider openai-compatible`), which sends your source to that endpoint; see [PROVIDERS.md](docs/providers.md).
 
 ## Quick start
 
@@ -32,7 +39,7 @@ chmod +x concept-scanner-darwin-arm64 && mv concept-scanner-darwin-arm64 concept
 ./concept-scanner submit <concept-id>
 ```
 
-Hitting an error or empty/thin output? See **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)** for the common failure modes and how to recover.
+Hitting an error or empty/thin output? See **[TROUBLESHOOTING.md](docs/troubleshooting.md)** for the common failure modes and how to recover.
 
 ## Running in Docker
 
@@ -56,7 +63,7 @@ docker run --rm --add-host=host.docker.internal:host-gateway \
   scan /workspace --ollama-host http://host.docker.internal:11434
 ```
 
-For a remote provider instead of host Ollama, pass `--provider openai-compatible --base-url ...` and the API-key env var. The model defaults to the measured best-value option (see `concept-scanner models --cloud`); pass `--primary-model` to override. See [PROVIDERS.md](PROVIDERS.md).
+For a remote provider instead of host Ollama, pass `--provider openai-compatible --base-url ...` and the API-key env var. The model defaults to the measured best-value option (see `concept-scanner models --cloud`); pass `--primary-model` to override. See [PROVIDERS.md](docs/providers.md).
 
 To bundle Ollama alongside the scanner (no host Ollama needed), use the included [`docker-compose.yml`](docker-compose.yml). Note: Ollama in a container is CPU-only unless a GPU is passed through (NVIDIA/Linux only; Docker on Apple Silicon cannot pass the GPU), so on a Mac the host-Ollama approach above is usually faster.
 
@@ -81,7 +88,7 @@ jobs:
           api-key: ${{ secrets.YOUR_PROVIDER_API_KEY }}   # a secret, never inline
 ```
 
-Inputs: `repo-path` (default `.`), `provider`, `base-url`, `model` (optional, defaults to the measured best-value model; see `concept-scanner models --cloud`), `ollama-host`, `api-key`, `extra-args`. The `api-key` must be passed as a secret. Concrete endpoints and model strings are in [PROVIDERS.md](PROVIDERS.md). The action ships no default provider or key: you supply the backend, exactly as a local run does.
+Inputs: `repo-path` (default `.`), `provider`, `base-url`, `model` (optional, defaults to the measured best-value model; see `concept-scanner models --cloud`), `ollama-host`, `api-key`, `extra-args`. The `api-key` must be passed as a secret. Concrete endpoints and model strings are in [PROVIDERS.md](docs/providers.md). The action ships no default provider or key: you supply the backend, exactly as a local run does.
 
 ## Choosing a model
 
@@ -94,7 +101,7 @@ On an interactive first run (no `--provider` and no saved config), setup first a
   to the endpoint. Shows a **cost/quality-ranked shortlist**, assembles the exact
   `--provider openai-compatible` command for the model you pick, and reminds you to export
   your API key (which stays in the environment, never a flag). Concrete endpoints and model
-  strings live in [PROVIDERS.md](PROVIDERS.md); `concept-scanner models --cloud` prints the
+  strings live in [PROVIDERS.md](docs/providers.md); `concept-scanner models --cloud` prints the
   same shortlist any time.
 
 Explicit flags, `--no-interactive`, or a saved config skip the prompt entirely, so
@@ -335,7 +342,7 @@ still sent. **Run Ollama on the same machine for the privacy claim to hold.**
 
 ## Contributing & community
 
-- [TROUBLESHOOTING.md](TROUBLESHOOTING.md): common failure modes and recovery
+- [TROUBLESHOOTING.md](docs/troubleshooting.md): common failure modes and recovery
 - [CHANGELOG.md](CHANGELOG.md): what changed between releases
 - [SECURITY.md](SECURITY.md) — how to report security issues privately
 - [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) — Contributor Covenant 2.1

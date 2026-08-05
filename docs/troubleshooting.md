@@ -1,12 +1,12 @@
 # Troubleshooting
 
 Common failure modes and how to recover, symptom first. If none of these fit,
-open a bug (see [CONTRIBUTING.md](CONTRIBUTING.md)) with the command you ran, the
-provider and model, and the last ~20 lines of output.
+open a bug with the command you ran, the provider and model, and the last ~20
+lines of output.
 
-For provider and key setup, see [PROVIDERS.md](PROVIDERS.md). For output-budget
+For provider and key setup, see [PROVIDERS.md](providers.md). For output-budget
 tuning (the `CS_BUDGET_*` environment variables referenced below), see the
-budgets section of [PROVIDERS.md](PROVIDERS.md).
+budgets section of [PROVIDERS.md](providers.md).
 
 ---
 
@@ -45,7 +45,7 @@ length/`max_tokens` limit.
 
 **Fix:** the scanner retries on truncation with a larger budget automatically. If
 it still truncates, raise the budget for the affected pass with the `CS_BUDGET_*`
-environment variables (see [PROVIDERS.md](PROVIDERS.md)). Reasoning-heavy models
+environment variables (see [PROVIDERS.md](providers.md)). Reasoning-heavy models
 spend more tokens before the answer, so they need a larger budget.
 
 ## The scan finished but shipped 0 concepts
@@ -58,7 +58,7 @@ Several distinct causes, in order of likelihood:
    surfaces more as `borderline` / `distinctive`.
 2. **A verbose frontier model was the multi-model primary on a thin repo.** Very
    capable models can synthesize an empty set on small inputs. Use a lighter
-   primary model (see "Choosing a model" in the [README](README.md)), or scan a
+   primary model (see "Choosing a model" in the [README](../README.md)), or scan a
    larger, more substantive repository.
 3. **The repository's core was excluded.** See "Results look thin or wrong"
    below.
@@ -145,7 +145,7 @@ the underlying failure.
 host, never from a flag.
 
 **Fix:** export the correct variable for your endpoint (see the key-resolution
-table in [PROVIDERS.md](PROVIDERS.md)) in the same shell that runs the scan.
+table in [PROVIDERS.md](providers.md)) in the same shell that runs the scan.
 Confirm it is set with `printenv <VAR_NAME>` (which prints only that one
 variable). Keys are never accepted as command-line flags, by design.
 
