@@ -1,0 +1,93 @@
+name: Bug report
+description: Something went wrong during install, a scan, or the output was wrong or empty.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for testing the scanner. Please check
+        [TROUBLESHOOTING.md](https://github.com/Obviously-Not/concept-scanner-public/blob/main/docs/troubleshooting.md)
+        first: many failure modes (Ollama not running, truncated output, empty
+        results, degraded remote runs) have a known recovery there.
+
+        **Do not paste API keys or proprietary source.** Redact anything sensitive
+        in the logs below.
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Output of `concept-scanner version` (or the release tag you downloaded).
+      placeholder: v1.0.5
+    validations:
+      required: true
+  - type: dropdown
+    id: provider
+    attributes:
+      label: Provider
+      description: Where inference ran.
+      options:
+        - Local (Ollama)
+        - Remote (OpenAI-compatible endpoint)
+    validations:
+      required: true
+  - type: input
+    id: model
+    attributes:
+      label: Model
+      description: The primary model id you used (and the secondary, if multi-model).
+      placeholder: qwen3-coder:30b
+    validations:
+      required: true
+  - type: input
+    id: os_arch
+    attributes:
+      label: OS and architecture
+      placeholder: macOS 15 / arm64
+    validations:
+      required: true
+  - type: textarea
+    id: target
+    attributes:
+      label: What did you scan?
+      description: Language(s), rough size (files/LOC), and a public URL if it is shareable.
+      placeholder: A ~200-file Rust service; https://github.com/example/repo
+    validations:
+      required: true
+  - type: textarea
+    id: command
+    attributes:
+      label: Command you ran
+      render: shell
+      placeholder: ./concept-scanner scan ./my-project
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected to happen
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: What actually happened
+      description: Include the exclusion summary line and any next-step notes the scan printed.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant output / logs
+      description: The last ~20 lines, or the failing batch. Redact secrets and source.
+      render: shell
+    validations:
+      required: false
+  - type: checkboxes
+    id: hygiene
+    attributes:
+      label: Before submitting
+      options:
+        - label: I checked TROUBLESHOOTING.md and this is not one of the known recoveries.
+          required: true
+        - label: I removed any API keys and proprietary source from the text above.
+          required: true

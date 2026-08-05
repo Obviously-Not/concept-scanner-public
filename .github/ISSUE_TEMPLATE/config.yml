@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Troubleshooting first
+    url: https://github.com/Obviously-Not/concept-scanner-public/blob/main/docs/troubleshooting.md
+    about: Most install and scan failures have a known recovery here. Please check before filing a bug.
+  - name: Security issue (report privately)
+    url: https://github.com/Obviously-Not/concept-scanner-public/blob/main/SECURITY.md
+    about: Do NOT open a public issue for a security problem. Follow the private disclosure process here.

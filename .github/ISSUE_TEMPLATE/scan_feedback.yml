@@ -1,0 +1,76 @@
+name: Scan-result feedback
+description: The scan ran fine, but you have feedback on the QUALITY of what it found (ranking, coverage, accuracy).
+labels: ["feedback"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This is for result quality, not crashes (use "Bug report" for those).
+        Your judgment on whether the tool found real, distinctive engineering is
+        exactly what this testing phase needs. Descriptions are meant as pointers
+        to verify against the cited code, not as final findings.
+  - type: dropdown
+    id: provider
+    attributes:
+      label: Provider
+      options:
+        - Local (Ollama)
+        - Remote (OpenAI-compatible endpoint)
+    validations:
+      required: true
+  - type: input
+    id: model
+    attributes:
+      label: Model
+      placeholder: qwen3-coder:30b
+    validations:
+      required: true
+  - type: input
+    id: target
+    attributes:
+      label: What did you scan?
+      placeholder: A ~200-file Rust service
+    validations:
+      required: true
+  - type: dropdown
+    id: top_distinctive
+    attributes:
+      label: Were the top-ranked concepts actually the most distinctive?
+      description: "Judge the ORDER, i.e. did the interesting mechanisms rank near the top?"
+      options:
+        - "Yes, the top ones were the interesting ones"
+        - "Mixed, the ranking was not reliable"
+        - "No, the ranking did not reflect distinctiveness"
+    validations:
+      required: true
+  - type: textarea
+    id: missed
+    attributes:
+      label: Did it miss anything real?
+      description: Distinctive mechanisms in the code that the scan did not surface at all.
+    validations:
+      required: false
+  - type: dropdown
+    id: accuracy
+    attributes:
+      label: Did the descriptions match the code they cited?
+      options:
+        - "Yes, accurate"
+        - "Some claims were wrong about the code"
+        - "Frequently wrong about the code"
+    validations:
+      required: true
+  - type: textarea
+    id: accuracy_detail
+    attributes:
+      label: Accuracy details
+      description: If any description misstated the code, which concept, and what was wrong?
+    validations:
+      required: false
+  - type: textarea
+    id: other
+    attributes:
+      label: Anything else
+      description: Triage burden (too many/few concepts), classification calls, or general impressions.
+    validations:
+      required: false
