@@ -241,7 +241,7 @@ By default the scanner runs **two discovery avenues in parallel**:
 - **Avenue A (size-based):** files are packed into batches until a context budget
   fills, in filesystem order. This is battle-tested and catches mechanisms that
   happen to land together.
-- **Avenue B (PBD-guided):** uses [go-pbd](https://github.com/live-neon/go-pbd)
+- **Avenue B (PBD-guided):** uses go-pbd
   semantic analysis (domain, intent, dependencies) to group related files that
   would be scattered by size-based batching. An LLM suggests file groupings
   based on the semantic index, surfacing cross-file mechanisms (a protocol

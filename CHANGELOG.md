@@ -4,14 +4,23 @@ All notable changes to concept-scanner are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and releases are the
 `v*` tags in this repository.
 
-## [Unreleased]
+## [1.0.6] - 2026-08-05
 
-The repository went **private on 2026-07-18** (see the project notes), so the
-work since `v1.0.5` has not been cut as a public release. It is internal
-reliability and quality work: a provider-agnostic model registry with
-fail-fast id resolution, a consolidated remediation pass over the open issues,
-and the two-phase (distill then extract) generation mode behind an off-by-default
-flag.
+**First release published to
+[`concept-scanner-public`](https://github.com/Obviously-Not/concept-scanner-public),
+and the first of any kind since `v1.0.5` on 2026-07-15.**
+
+The source repository went private on 2026-07-18, which took the binaries, the
+image and the GitHub Action private with it. Distribution is now split from
+source: the binaries, the image, the Action and these docs are published to a
+public repository, while the source stays private. For users the practical
+change is the coordinates. `uses: Obviously-Not/concept-scanner-public@v1`,
+and downloads from that repository's releases; the image path is unchanged.
+
+Everything between `v1.0.5` and here is reliability and quality work: a
+provider-agnostic model registry with fail-fast id resolution, a consolidated
+remediation pass over the open issues, and the two-phase (distill then extract)
+generation mode behind an off-by-default flag.
 
 ### Added
 
@@ -112,9 +121,7 @@ flag.
 - **Cloud Pass 2 grader changed to a model that actually works.** The previous
   default (`openai/gpt-oss-20b`) failed on OpenRouter with timeouts and
   truncation; `openai/gpt-oss-120b` also failed. The new default was validated
-  to complete Pass 2 classification without degradation. See
-  `docs/plans/2026-07-23-cloud-secondary-model-reliability-bench.md` for the
-  benchmark results.
+  to complete Pass 2 classification without degradation.
 
 - **Multi-model discovery no longer silently collapses to one model.** The tool's
   own recommended `--multi-model` secondary (`gpt-oss:20b`) and `--thorough`
@@ -131,10 +138,27 @@ flag.
   engineering axes. The numeric axes and array fields now decode tolerantly
   (coerce rather than fail); the local, grammar-constrained path is unchanged.
 
-- **README availability note.** The "Running in Docker" and "GitHub Action"
-  sections now state that the GHCR image and `uses:` reference are not publicly
-  consumable while the repository is private, and point to building locally,
-  instead of leaving a reader to hit a 403.
+- **Public distribution restored.** The "Running in Docker" and "GitHub Action"
+  sections briefly carried notes saying the image and `uses:` reference were not
+  publicly consumable. Both are consumable again, from the public distribution
+  repository, so the notes are gone and every reference points at the coordinates
+  that actually resolve.
+
+- **The build was broken for anyone but a maintainer, and is fixed.** Since
+  2026-07-21 a clean clone could not compile: `go.mod` carried a `replace`
+  pointing at a sibling checkout outside the repository. The dependency is now
+  consumed as a published module version. Nothing between `v1.0.5` and this
+  release could have been built by anyone who did not already have that sibling
+  on disk, which is also why no release was cut in that window.
+
+- **Cross-compilation restored for all five platforms.** The same change pulled
+  in tree-sitter, which requires cgo, and that broke static cross-compilation
+  outright. The TypeScript and Python encoders now sit behind a build constraint,
+  so released binaries are statically linked again and run on musl images.
+  **Consequence worth knowing:** a released binary skips Avenue B for Python and
+  TypeScript projects. Those still scan, because Avenue A is language-agnostic
+  and the two avenues merge; what is lost is semantic batching, not support for
+  the language. A locally built binary with cgo enabled retains both.
 
 ## [1.0.5] - 2026-07-15
 
@@ -166,6 +190,6 @@ flag.
   OpenAI-compatible remote endpoint) and the GitHub Action, publishing the
   container images to GHCR and Docker Hub.
 
-Releases from the next tag onward are published to this repository. Versions
-1.0.0 through 1.0.5 predate the split and were released from the source
-repository, which is private, so they have no page here.
+Releases from 1.0.6 onward are published to this repository. Versions 1.0.0
+through 1.0.5 predate the split and were released from the source repository,
+which is private, so they have no page here.
