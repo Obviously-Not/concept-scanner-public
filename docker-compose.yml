@@ -1,0 +1,55 @@
+# Optional local bundle: concept-scanner + Ollama together, no host Ollama needed.
+#
+#   docker compose run --rm scanner scan /workspace \
+#     --ollama-host http://ollama:11434 --primary-model qwen3-coder:30b
+#
+# CAVEAT: Ollama in a container is CPU-only unless a GPU is passed through (the
+# commented deploy.resources block below; NVIDIA + Linux only). Docker on Apple
+# Silicon CANNOT pass the GPU to a container, so on a Mac this bundle runs Ollama
+# on CPU (slow). For most Mac users, running concept-scanner against a
+# host-native Ollama is faster: see README "Running in Docker".
+services:
+  ollama:
+    image: ollama/ollama:latest
+    volumes:
+      - ollama-models:/root/.ollama
+    # No host port published on purpose: the scanner reaches ollama over the
+    # compose network by service name (http://ollama:11434), and publishing
+    # 11434 would collide with a host-native Ollama (the very setup the README
+    # recommends most users already run). Uncomment only if you need host access.
+    # ports:
+    #   - "11434:11434"
+    healthcheck:
+      # Gate the scanner's start on ollama actually listening — its own health
+      # check has a 2s timeout and no retry, so a bare depends_on races the
+      # daemon's startup and fails the first `compose run`.
+      test: ["CMD", "ollama", "list"]
+      interval: 3s
+      timeout: 5s
+      retries: 20
+    # GPU passthrough (NVIDIA/Linux) -- uncomment to enable:
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+
+  scanner:
+    # Moving major tag, matching action.yml and the README pull examples. The
+    # release (goreleaser dockers_v2) publishes :vX.Y.Z + the moving :vX; it does
+    # NOT publish :latest, so pin the major tag here for consistency.
+    image: ghcr.io/obviously-not/concept-scanner:v1
+    depends_on:
+      ollama:
+        condition: service_healthy
+    volumes:
+      - ./:/workspace # the repo to scan; results land under the container's data dir
+    working_dir: /workspace
+    # No default command: pass one via `docker compose run`. Inside the scanner
+    # container, reach the bundled Ollama at http://ollama:11434 (NOT localhost,
+    # which is the scanner container's own loopback).
+
+volumes:
+  ollama-models:

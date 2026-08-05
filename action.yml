@@ -1,0 +1,46 @@
+name: "Obviously Concept Scanner"
+description: "Surface a codebase's distinctive technical mechanisms using a local (Ollama) or any OpenAI-compatible LLM. Engineering-only."
+author: "Obviously-Not"
+branding:
+  icon: "search"
+  color: "purple"
+
+inputs:
+  repo-path:
+    description: "Path within the checked-out workspace to scan."
+    required: false
+    default: "."
+  provider:
+    description: "Inference provider (REQUIRED, no default; the Action is BYO-provider): 'ollama' (needs a self-hosted runner with Ollama) or 'openai-compatible' (a remote endpoint; the usual choice on GitHub-hosted runners, which cannot run a local LLM)."
+    required: true
+    default: ""
+  base-url:
+    description: "Endpoint base URL for provider=openai-compatible (the provider's /v1 URL). See PROVIDERS.md."
+    required: false
+    default: ""
+  model:
+    description: "Model string for the provider. Required for provider=openai-compatible (a remote model id)."
+    required: false
+    default: ""
+  ollama-host:
+    description: "Ollama host for provider=ollama (self-hosted runner). NOTE: this runs as a Docker container, so 'localhost' is the container, not the runner host; point it at the host's Ollama (e.g. http://host.docker.internal:11434, or run the job with --network host)."
+    required: false
+    default: "http://localhost:11434"
+  api-key:
+    description: "API key for a remote provider. Always pass it from a repo secret (never inline the literal key). See the README for the workflow snippet."
+    required: false
+    default: ""
+  extra-args:
+    description: 'Additional flags passed to `concept-scanner scan`, e.g. "--thorough --multi-model". Simple space-separated flags only; a value containing spaces cannot be quoted here.'
+    required: false
+    default: ""
+
+# Docker action (Linux runners only). Pins the moving :v1 image tag, so `uses:
+# ...@v1` always runs the latest v1 image. Keep the action's release major tag
+# and this image tag moving together (both v1); a specific action release may
+# instead pin an exact :X.Y.Z image (goreleaser strips the leading v from the
+# exact tag, so v1.2.3 publishes :1.2.3 + :v1).
+runs:
+  using: "docker"
+  image: "docker://ghcr.io/obviously-not/concept-scanner:v1"
+  entrypoint: "/usr/local/bin/action-entrypoint.sh"
