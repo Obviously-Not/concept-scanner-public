@@ -122,7 +122,7 @@ local-vs-cloud setup again.
 |---------|----------|-------------|-------|
 | **Fast** | `qwen2.5-coder:7b` | ~7 GB | Quick scans on any laptop |
 | **Balanced** (recommended) | `qwen3-coder:30b` | ~22 GB | Best capability/size ratio |
-| **Validated** | `qwen3-coder:30b` + `gpt-oss:20b` | ~38 GB | Adds a Pass 2 validation model |
+| **Validated** | `qwen3-coder:30b` + `gpt-oss:20b` | ~38 GB | Runs a second extraction model in parallel and merges (`--multi-model`). Pass 2 validation runs at every profile, not only this one |
 | **Thorough** | `qwen3-coder-next` | ~50 GB | Larger MoE model, slower |
 | **Custom** | any Ollama tag | — | Type your own model |
 
@@ -165,6 +165,10 @@ emitted text passes an output-layer check that keeps legal-statute vocabulary ou
 | `triage <scan-id> --workspace <path>` | Re-run grounding triage on a completed scan (`scan` runs it automatically; this re-runs after model/prompt changes) |
 | `bridges <scan-id>` | Discover cross-concept bridges (Pass 3 combinations) over a completed scan |
 | `models` | List the recommended model profiles + which are already pulled |
+| `bench` | Measure whether your model server actually runs requests in parallel |
+| `tiers run` / `tiers report` | Run one scan per model profile over one corpus and report what each produced |
+| `refusals <scan-id>` | Review what the quality gates held back, and who each verdict points at |
+| `anchoring-check` | Check whether a model is repeating the prompt back rather than reading the code |
 | `init` | Re-run the memory-aware model picker and save the choice |
 | `version` | Print the version and default models |
 
