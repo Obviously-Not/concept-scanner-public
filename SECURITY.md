@@ -14,6 +14,8 @@ concept-scanner is a local-first command-line tool that reads source code on you
 - Vulnerabilities in the scan pipeline that could leak source code to a non-local destination
 - Path traversal, symlink escape, or zip-bomb vulnerabilities in repository validation
 - Vulnerabilities in the audit-log or output-sanitization code paths
+- Vulnerabilities in `concept-scanner update`, which replaces the running binary: any way to make it install a file that is not a signed release, to install without the user's confirmation, or to leave a copy half-replaced; and any way to make a scan check for a release without the person's yes (that check is off unless they turn it on, and the setting lives in their home folder, out of reach of a repository being scanned)
+- Vulnerabilities in the install scripts (`install.sh`, `install.ps1`): any way to make them install a file that does not match the release's checksums, write outside the user's home folder (beyond a temporary download folder they remove), ask for administrator rights, or change a shell startup file or the user's PATH in a way `--uninstall` does not undo
 - Dependency vulnerabilities that materially affect the above
 
 Out of scope:

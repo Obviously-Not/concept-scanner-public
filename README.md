@@ -11,7 +11,7 @@ Local-first **engineering concept scanner** for codebases. Point it at a reposit
 
 The JSON output is shape-matched to the [Obviously-Not platform's](https://github.com/Obviously-Not) `code_scan` pipeline (`CharacterizationOutputSchema` v1.3.0) — engineering vocabulary only, no legal-statute language. Compatibility is by field-level inspection; it has not yet been validated against a live platform parser. Legal review is a separate, downstream step performed by qualified humans.
 
-By default all analysis runs against a local [Ollama](https://ollama.ai) model, so **your code stays on your machine**: no API keys, no cloud calls, no per-scan cost. You can optionally point it at a remote OpenAI-compatible provider (`--provider openai-compatible`), which sends your source to that endpoint; see [PROVIDERS.md](docs/providers.md).
+By default all analysis runs against a local [Ollama](https://ollama.ai) model, so **your code stays on your machine**: no API keys, no cloud calls, no per-scan cost. You can optionally point it at a remote OpenAI-compatible provider (`--provider openai-compatible`), which sends your source to that endpoint; see [PROVIDERS.md](docs/providers.md). The only other request it makes asks GitHub for the latest release: when you run `concept-scanner update`, and, only if you have said yes to it, at most once a day when a scan starts. It sends nothing about you or your code.
 
 ## Quick start
 
@@ -19,25 +19,39 @@ By default all analysis runs against a local [Ollama](https://ollama.ai) model, 
 # 1. Install and start Ollama (https://ollama.ai)
 ollama serve
 
-# 2. Get the scanner. No Go toolchain needed: download a prebuilt binary from the
-#    latest release (pick your platform: darwin-arm64, darwin-amd64, linux-amd64,
-#    linux-arm64, or windows-amd64.exe).
-gh release download --repo Obviously-Not/concept-scanner-public \
-  --pattern 'concept-scanner-darwin-arm64'
-chmod +x concept-scanner-darwin-arm64 && mv concept-scanner-darwin-arm64 concept-scanner
-#    Or run it via Docker (see "Running in Docker" below).
+# 2. Install the scanner for your user: no administrator rights, no Go toolchain.
+#    macOS and Linux:
+curl --proto '=https' --tlsv1.2 -fsSL https://raw.githubusercontent.com/Obviously-Not/concept-scanner-public/main/install.sh | sh
+#    Windows (PowerShell):
+powershell -ExecutionPolicy ByPass -c "irm https://raw.githubusercontent.com/Obviously-Not/concept-scanner-public/main/install.ps1 | iex"
+#    It installs to ~/.local/bin (on Windows, %LOCALAPPDATA%\Programs\concept-scanner),
+#    puts that on your PATH, and checks the download against the release's
+#    checksums. Open a new terminal afterwards. Or run it via Docker (see
+#    "Running in Docker" below).
 
 # 3. Scan a local directory (or a remote repo URL).
 #    On the first run, setup asks Local (Ollama) vs Cloud, then a
 #    memory-aware picker helps you choose a model.
-./concept-scanner scan ./my-project
+concept-scanner scan ./my-project
 
 # 4. Review the discovered concepts interactively
-./concept-scanner review <scan-id>
+concept-scanner review <scan-id>
 
 # 5. Export an approved concept as a JSON draft
-./concept-scanner submit <concept-id>
+concept-scanner submit <concept-id>
+
+# Later: check for a newer release. At a terminal it asks before installing,
+# and it replaces this copy only after the release's signature verifies.
+concept-scanner update
 ```
+
+**Hearing about new releases.** After your first scan at a terminal, the scanner asks once whether it may check for a newer version when a scan starts, at most once a day. It is off unless you say yes, and it only ever tells you; installing is still `concept-scanner update` and your yes. Change it any time with `concept-scanner update --auto-check on` or `off`.
+
+**Installing by hand.** Download the binary for your platform from the [latest release](https://github.com/Obviously-Not/concept-scanner-public/releases/latest) (`darwin-arm64`, `darwin-amd64`, `linux-amd64`, `linux-arm64` or `windows-amd64.exe`) and check it against `checksums.txt`. The Windows binary is signed (Microsoft Artifact Signing), and the macOS binaries are signed with a Developer ID and notarized by Apple. A bare command-line binary cannot carry its notarization with it, so the first time you run a macOS binary downloaded in a browser, run it from Terminal while online: macOS checks with Apple then. (Double-clicking it in Finder does not work for any command-line tool, signed or not.) See [TROUBLESHOOTING.md](docs/troubleshooting.md).
+
+**Uninstalling.** Run the same script with `--uninstall` (macOS and Linux: `curl ... | sh -s -- --uninstall`) or, on Windows, `-Uninstall`: `powershell -ExecutionPolicy ByPass -c "& ([scriptblock]::Create((irm https://raw.githubusercontent.com/Obviously-Not/concept-scanner-public/main/install.ps1))) -Uninstall"`. It removes the program, the line it added to your shell's startup file or your PATH, and `~/.concept-scanner`; scan results in each project's `data/` folder are left alone.
+
+**Shell completions:** `concept-scanner completion --help`.
 
 Hitting an error or empty/thin output? See **[TROUBLESHOOTING.md](docs/troubleshooting.md)** for the common failure modes and how to recover.
 
@@ -105,7 +119,10 @@ On an interactive first run (no `--provider` and no saved config), setup first a
   same shortlist any time.
 
 Explicit flags, `--no-interactive`, or a saved config skip the prompt entirely, so
-scripted and CI runs are unaffected.
+scripted and CI runs are unaffected. A scan never prompts when a coding agent or CI
+runs it, under `--json`, or with `TERM=dumb`: it uses the saved profile or the
+defaults and says so. On a terminal the choices take the arrow keys and Enter as
+well as their letters.
 
 ### Local model profiles
 
@@ -132,10 +149,10 @@ non-interactively (CI, scripts), pass `--no-interactive` with `--primary-model`:
 
 ```bash
 # Use a specific installed model, no prompts (works single-pass or multi-model)
-./concept-scanner scan ./my-project --no-interactive --primary-model qwen2.5-coder:7b
+concept-scanner scan ./my-project --no-interactive --primary-model qwen2.5-coder:7b
 
 # Two models in parallel with a merge step
-./concept-scanner scan ./my-project --multi-model \
+concept-scanner scan ./my-project --multi-model \
   --primary-model qwen3-coder:30b --secondary-model gpt-oss:20b
 ```
 
@@ -168,6 +185,8 @@ emitted text passes an output-layer check that keeps legal-statute vocabulary ou
 | `bench` | Measure whether your model server actually runs requests in parallel |
 | `tiers run` / `tiers report` | Run one scan per model profile over one corpus and report what each produced |
 | `refusals <scan-id>` | Review what the quality gates held back, and who each verdict points at |
+| `review <scan-id> --why <concept>` | Say why one concept was held back: the gate, what it measured, and how the number it failed was set |
+| `status [run-id]` | Show what a scan is doing, or `--wait` for it to finish (see "Watching a scan") |
 | `anchoring-check` | Check whether a model is repeating the prompt back rather than reading the code |
 | `init` | Re-run the memory-aware model picker and save the choice |
 | `version` | Print the version and default models |
@@ -186,15 +205,18 @@ emitted text passes an output-layer check that keeps legal-statute vocabulary ou
 | `--extract-model` | Phase-2 extraction model for `--two-phase` (default `gpt-oss:20b`). Also `CS_EXTRACT_MODEL`. |
 | `--timeout` | Per-request inference timeout (default 10m single-call, 30m under `--two-phase`). Raise for slow models or large batches. |
 | `--no-triage` | Skip the per-concept grounding triage pass (faster; leaves ungrounded concepts tagged `pending` instead of `file_missing` or `rescued`) |
+| `--tests` | How test files are used: `off` (default), `evidence` or `source` (see "Tests as evidence"). Also `CONCEPT_SCANNER_TESTS`. `--include-tests` is the older spelling of `--tests source`. |
 | `--no-auto-pull` | Fail if a model is missing instead of downloading it |
 | `--no-semantic-batching` | Disable PBD-guided semantic batching (use size-based batching only) |
 | `--allow-external-symlinks` | Allow symlinks pointing outside the repository (skips symlink-escape validation) |
 | `--ollama-host` | Ollama API URL (default `http://localhost:11434`) |
+| `--parallel-batches` | How many requests a scan keeps in flight (default 4). The model server serves as many at once as it has slots (Ollama's `OLLAMA_NUM_PARALLEL`, default 1) and queues the rest, so on a default server more is not faster. On a server with several slots, concurrent requests share the work and a scan is then **not byte-reproducible** run to run; use `1` when you need the same output twice. `models.json` beside each scan records the server's slots when the server runs on this machine and its log can be read |
 | `--full-history` | Fetch full git history for richer file provenance |
 | `--json` | Machine-readable `{ data, next_steps, notice }` envelope (see "Machine-readable output") |
-| `-v, --verbose` | Detailed progress output |
+| `--progress` | How the run is shown on stderr: `auto` (default), `live`, `static`, `plain` or `jsonl` (see "Watching a scan"). Also `CONCEPT_SCANNER_PROGRESS`. |
+| `-v, --verbose` | Detailed progress output, and at the end why each refused concept was refused (the same text as `review --why`) |
 
-Run `./concept-scanner scan --help` for the complete list.
+Run `concept-scanner scan --help` for the complete list.
 
 ## Concept output and grounding state
 
@@ -219,6 +241,48 @@ scanner verified its `location.file`:
 
 Downstream consumers typically filter on `grounded`, `repaired`, or `rescued`
 and treat `file_missing` / `uncertain` with appropriate skepticism.
+
+## Tests as evidence
+
+Test files are not read as a source by default. A test's setup data can
+describe a mechanism that does not exist, and a model that reads it as real
+ships a concept that is not in your code. Instead, after a scan decides which
+concepts it ships, each concept is paired with the tests beside it that use the
+declarations in its line range: for Go, the test functions in its own
+directory; for TypeScript and JavaScript, the `.test.` and `.spec.` files in
+its directory and its `__tests__` directory; for Python, the test files in its
+directory and the `tests/` or `test/` files named for its module or mirroring
+its path. Go is read from its syntax tree and the other three by pattern, which
+is less exact (see below). Models usually give no
+line range, so then the tests that use a declaration the concept's description
+names come first, ahead of the rest of the file's tests. No model is involved,
+no concept changes, and the result is written beside the scan as `tests.json`,
+with one line in the output:
+
+```
+Tests: 12 of 30 shipped concepts are paired with tests that exercise them (tests.json)
+```
+
+| `--tests` | What it adds |
+|-----------|--------------|
+| `off` (default) | Pairing only. No model reads a test. |
+| `evidence` | Also asks the model what each concept's paired tests assert that its description does not say, one call per paired concept. A property is kept only when its quote is found in the test's name, a failure message reported on the test's own `t`, the condition that guards one, or a case label the test prints and does not pass to the code under test, and when its statement repeats no phrase found only in the test's setup data. In TypeScript, JavaScript and Python the quote may come from the test's name or its assertion lines (`expect(...)`, `assert ...`), and there is no setup check. Every rejection is listed with its cause. The check is on where a quote comes from; it cannot tell whether the statement reads the assertion correctly. |
+| `source` | `evidence`, plus test files and test directories are read as a source, in batches of their own, for mechanisms that live only in tests, such as a test harness. |
+
+Tests often state what a mechanism refuses or never does, which a description
+of what the code does tends to leave out, so `evidence` is where to look for
+it.
+
+What pairing cannot see: concepts in other languages are counted, not paired; a
+test outside its language's convention that exercises the same code is not
+seen; in TypeScript, JavaScript and Python a declaration or test written in a
+form the patterns do not list is missed, and a name a test declares itself can
+pair by accident; and pairing uses the line range a model wrote, so a wrong
+range pairs the wrong tests. Whether the pattern-based languages pair well
+enough to keep is being measured (precision and recall of at least 0.7 against
+hand labels on one real repository each). `tests.json` records the names each test was paired on, so you can check
+why. It is not part of the `--json` envelope, and nothing in it changes a
+concept.
 
 ## Classification (`distinctive` / `borderline` / `textbook`)
 
@@ -253,8 +317,20 @@ By default the scanner runs **two discovery avenues in parallel**:
 
 Both avenues feed the same downstream pipeline (Pass 2 classification,
 characterization, triage, bridges). Concepts from both are merged and deduped
-before classification; each concept is tagged with its source avenue (`size`,
-`semantic`, or `both` if found by both).
+before classification.
+
+**`--docs-only` reads Markdown.** Only `.md` is collected as scannable
+documentation; `.txt`, `.rst`, `.adoc` and `.org` are excluded by design, so
+prose fixtures holding third-party text cannot enter as source. A `--docs-only`
+scan of a repository whose documentation is not Markdown therefore selects
+nothing, and says so rather than falling back to the code.
+
+**Avenue attribution is not carried per concept.** A merged concept does not
+record which avenue found it, so you cannot filter or group the output by
+avenue. The run's progress output reports how many concepts each avenue
+contributed and how many remained after the merge, which is enough to tell
+whether Avenue B is earning its time on your repository, and that is all the
+attribution there is.
 
 **Language coverage:** Avenue B runs only when go-pbd can encode the workspace.
 Supported languages: Go, TypeScript, Python, Markdown. For unsupported languages
@@ -317,14 +393,48 @@ stay distinguishable.)
     { "action": "Review the discovered concepts", "command": "concept-scanner review <id>",
       "priority": "high", "reason": "Approval gates submission", "timing": "soon" }
   ],
-  "notice": "12 textbook-classified concept(s) held back (use --include-textbook to include them)."
+  "notice": "12 textbook-classified concept(s) held back (use --include-textbook to include them). This run put 40 file(s) in front of the model, and reports 9 concept(s) while holding back 12. Anything not listed was not assessed."
 }
 ```
 
-On failure, `data` is `null` and the error is in `notice`. Every command's output
+A scan's `notice` always ends with that last part, the **run caveat**: how many
+files the model actually saw (and how many it never did), how many concepts the
+run reports and holds back, how many cited a file that could not be found, and
+how many generations were discarded on an output cap. It is built from the run's
+own numbers, so two runs that differ in any of them never print the same
+sentence; a human-readable scan prints it as its `Coverage:` line. On failure,
+`data` is `null` and the error is in `notice`.
+
+**Exit codes:** `0` success; `1` a usage, configuration or other general error;
+`3` the model or the model server (not running or stuck, a model missing or not
+downloadable, a model the endpoint does not have, a model call that failed, or a
+pass whose every call failed). `2` is reserved. Every command's output
 (and every error) carries at least two prioritized `next_steps` with a reason and
 a ready-to-run `command`, so a human or an AI agent always knows what to do
 next — including when zero concepts are returned.
+
+## Watching a scan
+
+A scan takes minutes to hours, and it says what it is doing the whole time.
+
+- **On a terminal**, a status line at the bottom shows the stage and how far
+  through it is, how long the current model call has run, the time left once
+  there is history to estimate it from (always marked `~`), tokens, cost, and a
+  count of warnings and errors, with the last few log lines under it. Results and
+  warnings print above it and stay in your scrollback. Ctrl+C stops the scan.
+- **Everywhere else** (CI, the Action, a pipe, a coding agent), each stage's
+  start and end is a timestamped line, with a heartbeat line at least every 30
+  seconds, and no cursor movement or colour.
+- **Every run writes a status file and a log** under `DATA_DIR/runs/<run-id>/`,
+  and prints the run id when it starts.
+
+**For scripts and agents:** wait on a scan with `concept-scanner status --wait`
+rather than by watching the process list. It exits with the scan's own exit code
+when the scan ends, and with 1 and a notice if the scan was cancelled, its
+process died (reported as **stale**), or `--timeout` passed. `status --json`
+gives the status as the usual envelope. `--progress jsonl` streams one JSON
+event per line on stderr instead (run, stage, progress, model call, retry,
+warning, error and heartbeat events), leaving stdout to `--json`.
 
 ## Requirements
 
@@ -334,15 +444,30 @@ next — including when zero concepts are returned.
 
 ## Privacy
 
-- No API calls to external services
-- All processing happens on your machine
-- Code never leaves your local environment
-- Unlimited scans (no per-call costs)
+Your code goes to the model you chose and nowhere else. This binary sends
+nothing about you or your scans to us.
 
-The privacy guarantee depends on Ollama running locally. If you point
-`--ollama-host` at a remote address (anything other than `localhost` /
-`127.0.0.1`), the scanner logs a warning at startup — but the request is
-still sent. **Run Ollama on the same machine for the privacy claim to hold.**
+It opens exactly three kinds of connection, and the full list is in
+`outbound_calls_test.go`, which fails the build if a new one is added without
+being described here:
+
+- **the model server you run**, for inference, downloading a model, the
+  approved-model manifest, the pre-run residency check, checking the server is
+  reachable, checking any `think` settings you saved against what each model
+  accepts, and recording what the server ran a scan with;
+- **the provider you chose**, when you run with `--provider openai-compatible`
+  on your own key, for inference and that provider's model list;
+- **GitHub's public releases page for this project**, for checking for a newer
+  release: when you type `update`, and, only if you said yes to it, at most once
+  a day when a scan starts. Nothing else contacts us, and nothing reports usage.
+
+Unlimited scans, no per-call costs, when the model server is your own.
+
+**Two things decide whether your code stays on your machine, and both are your
+choice.** Pointing `--ollama-host` at a remote address sends the request there;
+the scanner logs a warning at startup, and sends it anyway. Choosing an
+OpenAI-compatible provider sends your code to that provider under their terms,
+not ours. Run the model server locally and the code never leaves the machine.
 
 ## Contributing & community
 
