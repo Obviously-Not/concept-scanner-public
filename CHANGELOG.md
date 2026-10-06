@@ -6,6 +6,525 @@ All notable changes to concept-scanner are recorded here. The format follows
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-10-06
+
+### Added
+
+- **A figure for each concept, drawn by your model and corrected by hand.**
+  `concept-scanner figure draw <scan-id> [concept-id]` (or `--all`) asks your
+  primary model for a small graph of how a concept's own components connect,
+  one call per concept, and stores it beside the scan in `figures.json`, with
+  its Mermaid source. Each part cites a component by number, and a part that
+  cites none is drawn dashed and counted, so it cannot pass as one of the
+  concept's own. `figure apply` corrects a figure: renaming, removing or adding
+  a part writes it back to the concept's components, so an export carries it,
+  and `--edge` draws an arrow between two parts. Nothing in a scan reads a
+  figure. The window draws each concept's figure in its review screen, with the
+  same corrections, Copy Mermaid and Save as SVG. Before drawing, the command
+  says whether the model is already loaded, fits beside what is loaded, or
+  needs another model unloaded first.
+- **`concept-scanner ui` opens this program in your browser.** It starts a
+  window on this machine's loopback address (127.0.0.1) and opens it, or opens
+  the one already running. In it you choose a folder and scan it with live
+  progress (with a purpose, the coverage to read first, files to pin or leave
+  out), watch every scan running on the computer, review what a scan found and
+  approve, reject or export it, choose the model, a cloud provider and its key,
+  turn the update check on or off, and run any command with every option it
+  takes. The window runs this program's own commands, so it sees the same
+  scans, settings and keys an agent does, and a key saved in it is what a
+  terminal scan uses. It refuses requests addressed to any other host or sent
+  from any other site, and needs a secret the browser is given once. `ui --stop`
+  quits it (refused while a command it started is running); `ui --serve` runs
+  its server in a terminal and opens no browser. On a Mac, opening the app acts
+  as `ui`.
+- **A Mac app and a Windows installer.** Each release carries
+  `concept-scanner-macos.dmg`, a universal app (Apple silicon and Intel)
+  signed, notarized and stapled, which opens the window when double-clicked,
+  and `concept-scanner-setup.exe`, a signed per-user installer with a
+  Start-menu shortcut that needs no administrator rights; its uninstaller keeps
+  your scans, settings and keys. Both update themselves: the app replaces
+  itself whole from the new disk image after checking Apple's signature for
+  this publisher, and the window's **Install and restart** button installs a
+  newer release and reopens onto it. The bundle's own executable run from a
+  terminal stays a terminal program; only macOS opening the app opens the window.
+- **`models --json` gives the cloud endpoint's address** (`cloud_base_url`),
+  and `review --json`'s list gives each lineage's file-set flags as an argument
+  list too (`file_set_args`), so a program can widen a lineage without
+  splitting a line.
+- **`scan --dry-run --json` returns the repository's saved setup**: the
+  purpose, behaviours, pins, drops and last scan the returning setup screen
+  shows, under `saved_setup`, and a step to widen the last scan when it read
+  less than everything. No command returned them before.
+- **`scan --drop <path>` and `scan --behaviour <text>`**, the setup screens'
+  last two choices as flags, so a scan set up without the screens can say
+  everything they can: `--drop` leaves an exact path out (a folder ends in `/`)
+  and every widening keeps it out; `--behaviour`, up to eight times beside
+  `--intent`, names the behaviours whose files are read first.
+- **`help --json` lists every command.** Each command's arguments and what they
+  name (a folder, a scan id), every flag with its type, default, allowed values
+  and range (hidden ones marked), and the rules between flags the commands
+  enforce, read from the command tree itself, so it cannot describe a flag
+  differently from how the command parses it.
+- **Every command that calls a model shows its progress the way a scan does.**
+  `bridges`, `triage`, `synthesize`, `bench`, `anchoring-check` and
+  `distill gate` take `--progress` and write the run's status file and log;
+  `tiers run` shows a stage per arm. `status --running` lists every run in
+  progress with its command and target, a run's status says whether it widens
+  a scan or re-reads what changed since (`changed_rescan`), and a model
+  download reports its bytes as well as its percentage.
+- **A next step that runs this program carries its arguments** as `args`, beside
+  the `command` line a shell reads back into them, so a program can run it
+  without a shell; a step with a `<placeholder>` has none. **And an error raised
+  before a command runs** (a flag it does not have, a missing argument) is the
+  `--json` envelope when `--json` was given, where it used to be plain text.
+- **An API key saved once is used by every command.** `init --with-key` reads
+  the key from stdin (hidden at a terminal; piped otherwise, never a flag) and
+  saves it, readable only by you, for the exact host of your saved endpoint; a
+  key in the environment still comes first. It is sent to that host and no
+  other, refused for plain http to another machine, never copied into the
+  process environment, and shown only by its last four characters (`init
+  --json`, which also gives each key the command that removes it).
+  `init --remove-key` removes the saved endpoint's key, and with `--base-url
+  <url>` the key saved for that endpoint, saving nothing else. A damaged key
+  file stops the run and is left as it is, rather than being read as no keys
+  and overwritten.
+- **A provider saved once is what every command uses.** `init --provider
+  openai-compatible --base-url <url> --model <id>` saves a cloud provider, and
+  `scan`, `bridges`, `triage`, `synthesize`, `bench` and `anchoring-check` use it
+  whenever their own flags name no provider; the run says so. A flag still wins
+  for that run (`--provider ollama` runs locally). Picking a cloud model in the
+  first-run setup saves it the same way, and picking a local profile switches
+  back. `init --profile <key>` saves a local profile with no questions, and
+  `init --json` shows what is saved and which environment variables are in
+  force (a key is shown only as set).
+- **`models --json` says what a first-run screen needs**: this machine's memory,
+  the profile that fits it, the saved profile and provider, and whether Ollama is
+  installed apart from whether it answers, so its advice is "open the Ollama app"
+  or "download Ollama" rather than `ollama serve`.
+- **`review` with no scan id lists what is stored**: every lineage by the id to
+  review it with (its first scan), with its passes, when it last ran, how many
+  concepts and bridges it holds and how many are approved and pending (the same
+  counts `review <id>` reports), and the file-set flags a widening must repeat,
+  which no output showed before. A scan whose record cannot be read is listed as
+  unreadable, never left out. `--json` gives the same list.
+- **`review <scan-id> --set <id>=approved|rejected|skipped` records a decision
+  without a prompt**, repeatable, for concepts and bridges, so a script or an
+  agent can do what the interactive review does. It can change an earlier
+  decision, every value is checked before any is written (an unknown id is an
+  error naming it), and with `--json` it reports the new tallies and what it
+  recorded. Reviewing the first scan of a lineage covers every pass, and there a
+  concept is named with the pass that found it, `<pass-id>/<id>`, because each
+  pass numbers its concepts from 001.
+- **`review` and `submit` now work over a whole lineage.** Give `review` the id
+  of your FIRST scan and it reviews every pass that continued it, saying so:
+  "union of 3 passes, 41 concepts". Each decision is saved against the pass
+  that found the concept, so re-running an earlier pass cannot undo it. A
+  concept whose file changed since it was found shows STALE with the two
+  content hashes, one whose symbols are gone shows RETIRED with the names that
+  no longer resolve, and both can still be approved and exported: those are
+  disclosures about the evidence, not verdicts on the mechanism. `submit` names
+  the state and proceeds. A concept the store cannot load is reported rather
+  than quietly left out of the review.
+- **Every concept now says which call found it.** A `provenance` object on each
+  concept names the scan, the avenue, how many files shared the discovery call,
+  and which files those were. Yield is per call, so two concepts are only
+  comparable as evidence of density when the calls behind them were comparable,
+  and until now nothing in the output said what call a concept came from. It is
+  a disclosure, not a score: nothing ranks or filters on it. The concept schema
+  moves 1.9.0 to 1.10.0; a concept with no provenance means this scan did not
+  say, which is never the same as "found on its own".
+- **A renamed file keeps its concepts.** When a rescan can see that a covered
+  file moved, the concepts citing it follow it, with the path they used to cite
+  recorded beside them, and the file is not read again. Seeing it needs git and
+  the earlier scan's commit, which a shallow clone does not have; when that is
+  the case the scan says so rather than reporting that nothing moved, and a
+  renamed file reads as one deleted and one added, as before. The batch that
+  held it is re-run and reported as a NEW batch even when not one byte changed,
+  because a batch names its files, so its prompt is not the same prompt.
+- **A concept whose file is gone is retired, naming the absence.** It is kept,
+  never deleted, and it comes back by itself if the file does. A file that is
+  still there and cannot be read is NOT retired and says why: an unreadable
+  file is not evidence that anything went away. A covered file that left the
+  scan because a flag changed is not a deletion either.
+- **`--depth <n>`:** how many files may share one discovery call, 1 to 4. The
+  default works it out from the file sizes; this sets it. The scan's `Depth:`
+  line says which of the two it was, and a number above the ceiling is cut down
+  with the number you asked for named. Refused, rather than quietly ignored,
+  with `--multi-model`, which has no discovery batches to bound.
+- **`components.json` says WHY a concept's component list is the length it is.**
+  A concept can carry 2 to 6 short names for its sub-mechanisms, and until now an
+  absent list had four different causes and one spelling: the model named none,
+  it named exactly one and the emitted field cannot carry a single name so the
+  field was left out, it named more than six and the rest were cut, or
+  characterization never answered for that concept at all. Each is correct per
+  concept and none was recorded, so "this mechanism has no parts" and "we could
+  not fill the field" arrived as the same bytes. This file records the cause for
+  every shipped concept, keeps the names the bounds removed, which are the only
+  place they survive, and prints one line on every scan. **It never judges the
+  mechanism**: a concept recorded as named-none may have no sub-parts, or may
+  have been described too vaguely to break into parts, and the file says plainly
+  that it cannot tell those apart. Nothing is dropped, renamed or reordered by
+  it, and nothing in the scan reads it. Measured while building it, over 7,376
+  stored concepts: 97.5% of what the current output format ships carries at
+  least two components and a description of how they interact, and the causes
+  are recorded from this release onward, so scans made before it keep their
+  silence.
+- **`redundancy.json` now reports the near-duplicate NAME rate** (schema 1.2.0):
+  how many pairs of concept names read as the same name at a published
+  similarity threshold, how many of those cross a file boundary, how many names
+  are in at least one pair, and the pairs themselves. Every scan prints it on
+  its redundancy line. It is a different kind of number from the four relations
+  beside it, so it is kept apart from them and labelled: those are exact and
+  untunable, this is a similarity score. It exists because one model repeated a
+  single mechanism under three near-identical names in one scan and nothing
+  reported it: on that 25-file corpus a 7B model measured 0.200 pairs per name
+  against a 30B model's 0.083. **Nothing is dropped or reordered by it**, and it
+  is not a quality score for a model: on a second 24-file corpus the same two
+  models measured 0.045 and 0.074, the smaller model LOWER, so the ordering
+  inverted. Real repositories that implement one mechanism in several files
+  measure 0.009 to 0.100, and a template that names every exported symbol after
+  its own declaration reaches 1.05. Read it as what one scan contains, and
+  compare models only on one corpus at a time.
+- **`union.json` now says what to do about each file that produced nothing:**
+  the calls it sat in, whether it ever had a call to itself, and whether
+  re-reading it one file to a call is worth doing. A file that already had its
+  own call is named as excluded, because reading it alone would send the same
+  prompt again. A covered file whose call was never recorded says that too,
+  rather than being reported as though it had been alone.
+- **A scan can now re-read only what changed, and say what a second pass
+  added.** With `--parent`, `--changed` re-reads the files an earlier scan
+  covered whose contents have changed since, by re-running the same discovery
+  batches that held them, with the same files in the same order, so the new
+  concepts are comparable with the ones they replace. A batch that lost a file
+  is re-run without it and reported as a new batch, because its prompt differs.
+  `--changed` needs `--parent` and says so.
+- **`union.json`, beside a widened scan:** every concept every pass of that
+  lineage shipped, each attributed to the pass that found it, and how much this
+  pass added, as a RANGE rather than a single number. The range is honest about
+  what cannot be known: a widening reads files no earlier pass read, so two
+  passes never cite the same file, and only a concept's name can be compared
+  across them. Its low end reads every shared name as the same mechanism found
+  again, its high end reads none as such. A concept whose file no longer
+  contains the symbols its description names is marked retired and KEPT, never
+  deleted, and lists what no longer resolves; a file that cannot be read is
+  reported as such and retires nothing.
+- **`--only <glob>`, repeatable:** read only the paths you name. It narrows
+  what the scan considers at all, so a coverage percentage stays a percentage
+  of what you asked for, and it composes with `--exclude`, which still removes.
+  Name a directory (`--only internal`) to take its whole subtree.
+- **A next step that offers to re-read the files a scan got nothing from**, one
+  file to a call, since a file that shared a call competed for that call's
+  output. It leaves out the files that already had a call to themselves, prices
+  the re-read from your own run's calls, and quotes a range of 1.75 to 2.60
+  concepts per file rather than one number. It says plainly that this buys
+  coverage and not depth: the concepts recovered this way were descriptions of
+  subsystems, not of the unusual mechanisms a scan is for.
+- **Each scan records which files shared each discovery batch** (in
+  `arc.json`), which is what lets a later scan restore a batch exactly. A scan
+  that forms no batches, such as `--multi-model`, says so rather than leaving
+  the record empty.
+
+- **A scan can read part of a repository first, outward from what the project
+  is for, and widen later.** At a terminal, three screens now come before a
+  scan: the project's purpose and behaviours, read by your model from the
+  project's own documents (each behaviour kept only with a quote found in the
+  document it cites), which you can edit; which folders would be read first,
+  ranked outward from the files the model names for each behaviour along the
+  code's dependencies and folders, with their tokens and the expected time;
+  and a ready screen. Without a person at the terminal a scan reads every file
+  as before, unless it passes `--intent`, `--intent-file` or
+  `--intent-from-docs` with `--coverage <pct>`. `--parent <scan-id>` widens an
+  earlier scan, reading only files no scan in its lineage has read, and
+  `--pin` always reads a glob first. `--dry-run` shows every ring with its
+  files, tokens and time and saves the plan without reading anything with the
+  model. A folder you drop on the screens is read by no part of the scan, and
+  stays out of every later scan that widens it and out of a saved plan. A
+  widening collects files the way its first scan did (the same `--exclude`,
+  documents and tests modes), and is refused, naming the flags to give, when it
+  would not; every command a scan prints repeats the flags you gave. The
+  purpose is never sent to the scan's own prompts. Each such scan
+  writes `intent.json` and `arc.json` beside it, and says in its summary and
+  `--json` notice that it read part of the repository. Your choices are kept
+  per repository in `~/.concept-scanner/repos/` in your home folder.
+
+### Changed
+
+- **An exported draft carries the arrows you drew.** Concept schema 1.13.0
+  adds `component_edges` to the `submit` draft: each arrow you drew with
+  `figure apply --edge` between two of the concept's components, as
+  `{"from": "c1", "to": "c4", "label": "..."}`, where `c<n>` is the nth entry of
+  `components`. An arrow touching a part the model added stays on the figure,
+  and a figure drawn over parts that have changed since exports none; `submit`
+  says when either happens. The arrows the model drew are not exported. An
+  arrow from a part to itself is now refused.
+- **`review --sort score|file` chooses the order concepts are listed in.**
+  Concepts awaiting a decision come first, then the rest, and `score` (the
+  default) puts the strongest first while `file` groups them by file. The
+  terminal, `review --json` and the window now list concepts in the same order;
+  before, the window showed them in the order they were stored, and reviewing a
+  lineage of scans was never sorted by score. The window has a "by score / by
+  file" control.
+- **`submit` keeps each scan's drafts in their own folder.** Left to its
+  default, a draft is written to `output/<scan>/concepts/` (or
+  `output/<scan>/bridges/`) in the data folder, where `<scan>` is the pass the
+  item belongs to. Concept ids are numbered from 001 within each scan, so the
+  same id is ordinary across scans, and the old shared `output/concepts/` let a
+  second scan's draft silently replace the first. An `--output` you give is
+  still used as given.
+- **Every concept says which models its scan ran.** Concept schema 1.11.0 adds
+  `provenance.models`: each model by role (discovery, classification,
+  characterization) with the digest its tag pointed at. Until now that lived
+  only in the scan's `models.json`, which an importer never receives. On the
+  `--multi-model` path, `models.json` now also names the characterization
+  model, which it used to leave out.
+- **A bridge whose three engineering scores were not answered says so.**
+  Bridge schema 1.2.0 adds `axes_unanswered`, true when technical
+  distinctiveness, generality and commonness all came back exactly 0, which
+  means the model's answer left them out rather than scored them; `review`
+  shows them as not scored instead of 0.00. Before this an importer stored the
+  zeros, and a commonness of 0 reads as maximally unusual. Locally the three
+  are now REQUIRED in the bridge request's schema, so a local model cannot
+  leave them out (a re-run: 3 of 40 unscored before, 0 of 43 after); the flag
+  remains for remote providers, which do not enforce the schema.
+- **An exported draft records the commit it was scanned at.** `submit` writes
+  `source_audit.commit_hash` (concept schema 1.12.0, bridge schema 1.2.0), so a
+  concept imported from a draft can say which version of the code it
+  describes, as one imported from a whole scan already could.
+- **A scan's held-back counts are always written.** Scan result 1.4.0 writes
+  `textbook_held`, `low_score_held` and `ungrounded_dropped` even when they are
+  0. A score gate that held nothing back is worth seeing, and an omitted zero
+  read the same as an older scan that did not report the count.
+- **`submit` names its scan: `submit <scan-id> <concept-or-bridge-id>`.** An id
+  found by id alone could be the wrong copy: inside one lineage every pass
+  numbers its concepts from 001, so a `--changed` rescan finds the same ids
+  again, and the oldest copy was the one exported. The scan id is the one
+  `review` takes; over a lineage, name a concept with its pass as
+  `<pass-id>/<id>` (its `provenance.scan`), as `review --set` does.
+- **Flags that cannot go together are refused before the command runs**, with
+  one message shape: `--docs-only` with `--exclude-docs`, `--depth` with
+  `--multi-model`, `review --set` with `--why`, `init --with-key` with
+  `--remove-key` and `--profile` with `--model`, `status --running` with
+  `--wait`. `--with-dependents` without `--changed`, and `--changed` without
+  `--parent`, are refused the same way as before.
+- **`synthesize --json` speaks the same envelope as every other command**, with
+  real next steps, and **`synthesize --format` is gone**: its JSON could never
+  have been parsed, because progress lines went to stdout before it. Use
+  `--json`.
+- **`bench --write-config` saves without asking**, under `--json` too, where it
+  used to save nothing.
+- **`tiers run` names `--provider ollama` for every arm**, so a saved cloud
+  provider cannot reach a measurement of local tiers. A sweep begun on an
+  earlier version reports its old and new arms as not comparable (they ran with
+  different flags); re-run it with `--force`.
+- **`synthesize` keeps what it can when a later Pass 5 step fails**, as
+  `scan --synthesize` already did: a failed combination or scoring step is
+  reported and the patterns that do not depend on it are kept, where it used to
+  stop with nothing. Both now run the same Pass 5.
+- **Your saved choices now live in one file in your home folder,
+  `~/.concept-scanner/settings.json`.** The model profile `init` and the
+  first-run picker save, `bench --write-config`'s parallel batches, and the
+  hand-edited `"think"` and `"budgets"` sections all moved there from
+  `data/config.json`, which is no longer read: copy any `"think"` or
+  `"budgets"` section you had into the new file, and re-run `init` to save a
+  profile. A file that cannot be read is now moved aside and named in a
+  warning, never overwritten, and two copies of the program saving at once no
+  longer erase each other's changes.
+- **Scans now live in one place, `~/.concept-scanner/data`, whatever folder you
+  run from.** They used to go to a `data` folder in the directory you ran the
+  command from, so a scan started elsewhere, or by an agent, was invisible to
+  `review` run here. `submit` now writes its drafts to `output/` in that folder
+  (it wrote `output/concepts` and `output/bridges` where it ran), and `tiers`
+  writes to `tiers/` there. **Scans you already have in a project's `data`
+  folder are not read from there**: copy them across
+  (`cp -R data/. ~/.concept-scanner/data/`), or set `DATA_DIR=./data` to keep
+  using that folder. Set `DATA_DIR` to keep scans anywhere else; with no home
+  folder and no `DATA_DIR` a command now stops and says so. The container image
+  and the GitHub Action still keep scans in the scanned repository's `data`
+  folder.
+- **Uninstalling keeps your scans, settings and saved keys.** `install.sh --uninstall` and
+  `install.ps1 -Uninstall` used to delete `~/.concept-scanner`; they now remove
+  the program and the extraction cache, leave that folder, say what it holds,
+  and print how to delete it.
+- **The extraction cache needs a user cache folder.** With none (no home
+  folder), a multi-model scan now stops and says so instead of using a
+  temporary folder for one run.
+- **Each command offers only the flags it reads.** `--exclude`,
+  `--include-clients` and `--include-fixtures` belong to `scan` and `triage`;
+  `--only` to `scan`; `--tests` and `--include-tests` to `scan` and
+  `tiers run`; `--log-requests` to the commands that call a model. They used to
+  appear on every command, so `review --exclude vendor` was accepted and did
+  nothing; it is now an unknown flag. `tiers run` passes the request log to its
+  arms through `CONCEPT_SCANNER_LOG_REQUESTS=1`. `version`, `init` and `models`
+  now refuse arguments they used to ignore, and the usage line of every command
+  that needs an id says so (`review <scan-id>`).
+- **A model server that is not running is reported as "Open the Ollama app, or
+  run: ollama serve"**, everywhere it was "Start it with: ollama serve": a
+  person who uses the window, or a Mac or Windows desktop, starts Ollama as an
+  app.
+- **`OLLAMA_HOST` is not read.** It never took effect (the `--ollama-host`
+  flag always has a value, which won), and `.env.local` could set it, so
+  making it work would have let a scanned repository move "local" inference to
+  a server of its choosing. Point at another local server with `--ollama-host`.
+
+### Removed
+
+- **`scan --type` (`-t`).** Its help offered five scanner strategies, and no
+  part of a scan ever read the choice: every value scanned the same way. A
+  script that passes it now stops with "unknown flag"; drop the flag and the
+  scan is the one it always ran.
+
+### Fixed
+
+- **A concept whose characterization failed no longer ships looking
+  characterized.** When the characterization call failed, its source could not
+  be read, or no model provider could be built, the concept used to be marked
+  `characterized` with zeros on its engineering axes, which an importer reads as
+  scores. It now keeps the status `extracted`, carries
+  `characterization_incomplete`, is not held back by the score floor on its
+  discovery-time estimate, and appears in `refusals.json` (and `refusals`) as
+  shipped without axes, with the cause. `characterization_incomplete` also now
+  marks a concept whose depth, specificity and generality all came back
+  unanswered.
+- **An answer that quotes a regular expression is no longer thrown away.** A
+  model describing code that contains `\p{L}` or `\d` often writes it into its
+  JSON answer without escaping the backslash, and the whole answer was rejected.
+  Such escapes are now repaired, only when the answer fails to parse as given.
+  Locally, an answer that cannot be read is no longer retried three more times,
+  since the same prompt returns the same answer.
+- **A `--multi-model` scan's concepts name the file they come from.** When the
+  scan shortened its findings to fit the final merge, the file names were lost,
+  so every concept shipped with no location and without the engineering details
+  that need one. A shortened summary now names its files, and the merge must give
+  every concept a location.
+- **A `--multi-model` scan sends every file to its final merge when they fit.**
+  It held back about half the model's window, so on a small repository it often
+  shortened its findings, and when the model made them longer instead, a file
+  was left out. It now checks the real request (its prompts, the findings and
+  the answer's budget) against the window, stops shortening after a round that
+  does not make the findings smaller, and no longer sends each extracted
+  statement and principle two or three times over.
+- **The second model in a `--multi-model` scan is asked for at most 25
+  statements per file**, and a longer answer is cut to its first 25 with a
+  warning. A small model listed statements until it ran out of room, and the
+  file fell back to the primary model alone. A local server that does not
+  enforce the limit while the answer is written can still let it run out.
+- **`submit` names a STALE or RETIRED concept's state**, from the lineage's
+  newest union. It read the union beside the concept's own pass, where none is
+  ever written, so the notice never appeared.
+- **`review` offers a concept or bridge that has no review status**, which
+  its tallies already counted as pending; it used to skip it, so a review could
+  end with items pending that it had never shown.
+- **`bridges`, `triage` and `synthesize` on a remote provider without
+  `--primary-model` sent a local Ollama model name to the endpoint.** They now
+  use the same cloud default `scan` does, and every command picks its model by
+  one rule. They also now limit how many requests run at once on a remote
+  provider, as `scan` does; before, only the local limit was set.
+- **`bench`, `anchoring-check` and `distill gate` now say when your code leaves
+  this machine.** On a remote provider they sent source to the endpoint without
+  the notice every other command prints; every command that runs a model now
+  decides and checks its provider in one place.
+- **Reading tests as a source no longer decides whether documents are read.**
+  The automatic rule reads a repository's documents unless code is more than
+  half of what it collects, and with `--tests source` the test files counted
+  as code, so a repository with many tests stopped reading its documents.
+
+- **A multi-model scan that cut summaries from its synthesis prompt reported
+  dropping no files.** When a repository's extractions did not fit the model's
+  window even after compression, the scan left whole compressed summaries out
+  of the prompt, and `files_dropped_at_batch` counted only files left out one
+  by one, which at that point never happens, so it said 0. It now counts every
+  file a cut summary stood for, and lists them, so a coverage scan does not
+  count them as read and the next widening reads them.
+
+- **A description that named its own file was marked partly ungrounded.**
+  The check that a concept's description names symbols its cited file
+  contains counted the file's own name ("the retry in retry.go") as a symbol
+  the file must contain, which most files do not. It no longer does; about one
+  verdict in five hundred in real scans' `grounding.json` changes.
+
+- **`concept-scanner models` showed the Thorough profile as not pulled when it
+  was.** That profile names its model without a tag, and Ollama lists every
+  model with one (`:latest`), so the check never matched. A model named without
+  a tag is now compared as its `:latest`, in the table, in `--json` and in the
+  setup screen to come.
+- **A scan's `commit_hash` and `branch` were always empty.** Both fields have
+  been in the scan output from the start and nothing filled them in, although
+  the commit was read for the audit records. They now carry the commit and
+  branch of the scanned repository. They stay empty when the folder scanned is
+  not the top of a git repository (a subfolder of one included, as before for
+  the audit records), and `branch` stays empty on a detached checkout (as in
+  many CI jobs), where git reports `HEAD` rather than a branch name. Scans saved
+  before this change keep their empty values.
+- **A concept could be placed in a file the scan had skipped.** A scan leaves out
+  client and example folders, fixture folders and anything `--exclude` names,
+  but the steps that decide which file a concept lives in (the path the model
+  gave, the repair of a malformed path, the search for a file with the same
+  name, and triage's search) skipped only vendored and generated folders. So a
+  concept could be credited to example, fixture or excluded code the model was
+  never shown. Those steps now follow the same rules as the scan itself. A
+  concept whose only match is in a skipped folder now goes to triage, which
+  searches the files the scan read, and is dropped as ungrounded if nothing
+  there matches (with `--no-triage` it is kept, marked pending, as any
+  unconfirmed location is). `--include-clients`, `--include-fixtures` and
+  leaving out `--exclude` still let those files be found.
+- **The calls that group files for semantic batching were missing from the
+  cost log.** Apart from the model warm-ups, they were the one discovery-stage
+  call that recorded nothing, so
+  a remote scan's token totals left them out, their time could appear in the
+  "not accounted for" note at the end of a scan, and the progress estimate had
+  no history for them. They are now recorded as `batch-suggestion`, including
+  when their answer cannot be read. Cost logs written before this change have no
+  such rows.
+- **A repository with git worktrees inside it was scanned once per copy.** A
+  scan read every folder below the one you named, including folders that are
+  checkouts of their own: an agent's worktree (for example under
+  `.claude/worktrees`) is a full copy of the repository at another commit, so
+  its code was scanned again. Such folders are now skipped, and the exclusion
+  summary counts them as "in other checkouts" and says to scan one directly to
+  read it. This also skips **git submodules** and repositories cloned inside
+  yours, whose files belong to another repository; to scan a submodule, point
+  `scan` at its folder. The folder you scan is still read when it is a checkout
+  itself.
+
+### Security
+
+- **`.env.local` can no longer set an API key, `DATA_DIR`, or anything that
+  steers what a key is spent on** (`CS_EXTRACT_MODEL`, `CS_TWO_PHASE`,
+  `CS_SEMANTIC_BATCHING`, `CS_REMOTE_CONTEXT_CAP`, `CS_RECORD_EXAMPLES`,
+  `CONCEPT_SCANNER_TESTS`, every `CS_BUDGET_*`). Once keys can be saved, a file
+  in a cloned repository that set them would spend your key on its own terms: a
+  key from it would come before yours and send your code to your endpoint on
+  someone else's account, where its request logs are visible to them. Set these
+  in your real environment instead.
+- **A repository being scanned could choose which models ran and how much
+  output each pass may use.** The saved model profile and budgets were read
+  from `data/config.json` in the data directory, which is inside the
+  repository for `scan .` run from its root, in the container image and in the
+  GitHub Action, so a repository could ship one; on a cloud provider that is
+  what your key pays for. Saved choices are now read only from your home folder.
+- **A `--multi-model` scan kept its per-file extractions in a `cache` folder
+  where it ran, and trusted whatever it found there.** In the container image
+  and the GitHub Action, and for `scan .` run from a repository's root, that
+  folder is inside the repository being scanned, so the scan wrote its cache
+  into the repository (root-owned in the image), and a repository could ship
+  an entry that replaced one of its files' extraction with text of its own
+  choosing, so that file's code was never sent. The cache now lives in your
+  user cache folder (`~/Library/Caches/concept-scanner/extractions` on macOS,
+  `~/.cache/concept-scanner/extractions` or under `$XDG_CACHE_HOME` on Linux,
+  `%LocalAppData%\concept-scanner\extractions` on Windows), readable only by
+  you, and a run with no home folder uses a folder of its own that it removes
+  when it ends. The first multi-model scan after updating extracts every file
+  again. An old `cache` folder is no longer read and can be deleted. A cached
+  extraction is now attributed to the file that asked for it: it carried the
+  path of whichever file first had the same content, which in a shared cache
+  could be another repository's, and that path went into the prompt.
+
+- **A file that is a link into the repository's `.git` folder is no longer
+  read.** A README, or any collected file, that was a link to `.git/config`
+  was read like the file it pretended to be and sent to the model, and in the
+  GitHub Action that file holds the checkout's token. Collection now skips such
+  a link, and no other step reads one.
+
 ## [1.2.0] - 2026-10-03
 
 ### Added

@@ -225,12 +225,20 @@ function Uninstall-ConceptScanner {
         Remove-Item -LiteralPath $dir -Recurse -Force
     }
     [void](Remove-CsUserPath $dir)
-    $settings = Join-Path $env:USERPROFILE '.concept-scanner'
-    if (Test-Path -LiteralPath $settings) {
-        Remove-Item -LiteralPath $settings -Recurse -Force
+    # The extraction cache, in the folder Go's os.UserCacheDir names on Windows:
+    # it regenerates on the next scan and holds extractions of every repository
+    # scanned, so uninstalling removes it.
+    $cache = Join-Path $env:LOCALAPPDATA 'concept-scanner'
+    if (Test-Path -LiteralPath $cache) {
+        Remove-Item -LiteralPath $cache -Recurse -Force
     }
-    Write-Host "Removed $dir, its PATH entry, and $settings."
-    Write-Host "Scan results in each project's data folder are left alone."
+    Write-Host "Removed $dir, its PATH entry, and the extraction cache, $cache."
+    # Your scans, settings and saved keys are yours to delete.
+    $kept = Join-Path $env:USERPROFILE '.concept-scanner'
+    if (Test-Path -LiteralPath $kept) {
+        Write-Host "Kept ${kept}: your scans, settings and any API keys you saved."
+        Write-Host "To delete them too: Remove-Item -Recurse -Force '$kept'"
+    }
 }
 
 if ($Uninstall) { Uninstall-ConceptScanner } else { Install-ConceptScanner }

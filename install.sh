@@ -40,6 +40,18 @@ cs_paths() {
 	cs_dir="$HOME/.concept-scanner"
 	cs_env="$cs_dir/env"
 	cs_fish_file="${XDG_CONFIG_HOME:-$HOME/.config}/fish/conf.d/concept-scanner.fish"
+	# The extraction cache, in the folder Go's os.UserCacheDir names: it
+	# regenerates on the next scan and holds extractions of every repository
+	# scanned, so uninstalling removes it.
+	case "$(uname -s)" in
+	Darwin) cs_cache="$HOME/Library/Caches/concept-scanner" ;;
+	*)
+		case "${XDG_CACHE_HOME:-}" in
+		/*) cs_cache="$XDG_CACHE_HOME/concept-scanner" ;;
+		*) cs_cache="$HOME/.cache/concept-scanner" ;;
+		esac
+		;;
+	esac
 }
 
 # cs_detect_asset prints the release file for this machine, named the way the
@@ -255,10 +267,16 @@ cs_uninstall() {
 			cs_say "Removed the line it added to $cs_rc"
 		fi
 	done
-	rm -f "$cs_fish_file" "$cs_dest"
-	rm -rf "$cs_dir"
-	cs_say "Removed $cs_dest and $cs_dir."
-	cs_say "Scan results in each project's data/ folder are left alone."
+	rm -f "$cs_fish_file" "$cs_dest" "$cs_env"
+	rm -rf "$cs_cache"
+	cs_say "Removed $cs_dest and the extraction cache, $cs_cache."
+	# ~/.concept-scanner holds your scans, settings and saved keys, which are
+	# yours to delete. It goes only when the PATH file was all it held.
+	rmdir "$cs_dir" 2>/dev/null || true
+	if [ -d "$cs_dir" ]; then
+		cs_say "Kept $cs_dir: your scans, settings and any API keys you saved."
+		cs_say "To delete them too: rm -rf \"$cs_dir\""
+	fi
 }
 
 cs_main() {

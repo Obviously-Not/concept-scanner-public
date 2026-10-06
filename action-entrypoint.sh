@@ -10,7 +10,7 @@
 set -e
 
 # The container runs as root, so everything the scanner writes to the mounted
-# workspace (data/scans/..., cache/, costs/, pbd/) lands root-owned. The
+# workspace (data/scans/..., costs/, pbd/) lands root-owned. The
 # subsequent workflow steps run as the unprivileged runner user and can't read
 # it (EACCES on scandir) — and the same bites a `docker run` host user. Capture
 # the workspace owner now (before we write anything) and hand our output back on
@@ -44,6 +44,15 @@ INPUT_EXTRA_ARGS="$(printenv 'INPUT_EXTRA-ARGS' || true)"
 # $HOME/.gitconfig; guard against an unset HOME (container run as a bare uid).
 export HOME="${HOME:-/tmp}"
 git config --global --add safe.directory '*'
+
+# The image keeps scans in /workspace/data, where `docker run` mounts the
+# repository. The Action's repository is its working directory
+# (/github/workspace), so the image's own value moves there, under the
+# workspace where later workflow steps can read it; a DATA_DIR the workflow sets
+# is kept.
+if [ "${DATA_DIR:-}" = /workspace/data ]; then
+	export DATA_DIR="$PWD/data"
+fi
 
 # Map the action's api-key to the generic env var the scanner reads (never printed).
 if [ -n "$INPUT_API_KEY" ]; then

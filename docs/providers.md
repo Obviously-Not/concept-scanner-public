@@ -6,17 +6,20 @@ concept-scanner runs against **local Ollama** (the default) or **any OpenAI-comp
 
 - `--provider ollama` (default): local Ollama. `--ollama-host` sets the host (default `http://localhost:11434`). Your code never leaves your machine.
 - `--provider openai-compatible`: a remote endpoint. Set `--base-url` to the endpoint's `/v1` URL. `--primary-model` is optional: if omitted, it defaults to `deepseek/deepseek-v4-flash` (the measured best-value model on cost per distinctive concept). **Your source is sent to that endpoint** (the tool prints a notice when a remote provider is selected).
+- **Saved once, used everywhere.** `concept-scanner init --provider openai-compatible --base-url <url> --model <id>` saves the provider, endpoint and model to `~/.concept-scanner/settings.json`, and every command that calls a model uses them when its own flags name no provider, so `concept-scanner scan .` from any terminal, or an agent's call, runs on them with nothing passed. The run says it is using the saved provider. A flag wins for that run: `--provider ollama` runs locally, and another `--base-url` does not inherit the saved model. `init --profile <key>` (or picking a profile in `init`) switches back to local Ollama. `--ollama-host` given to `init` is saved too.
 
-The API key comes from the **environment only** (never a flag, which would leak into shell history and CI logs). Selection is **matched to the endpoint host** so one exported key can't leak to a different vendor: a vendor key is used only when the base-URL host is that vendor's (`OPENROUTER_API_KEY` for an `openrouter.ai` host, `OPENAI_API_KEY` for an `openai.com` host). For any other host (a self-hosted gateway, Groq, a private proxy) set the generic `CONCEPT_SCANNER_API_KEY`; a vendor key is never sent to a host it doesn't match. Keyless endpoints (for example a local Ollama `/v1`) need no key.
+The API key comes from the **environment first, then from a key you saved** (never a flag, which would leak into shell history and CI logs). Save one once with `concept-scanner init --with-key`: it reads the key from stdin (hidden at a terminal; piped, as in `printf '%s' "$KEY" | concept-scanner init --with-key`, otherwise), saves it in `~/.concept-scanner/credentials.json` (readable only by you) for the exact host of your saved endpoint, and every command uses it for that host and no other. `init --remove-key` removes it (with `--base-url <url>`, the key saved for that endpoint instead, leaving the saved provider as it is), and `init --json` shows which hosts have one, by their last four characters, each with the command that removes it. Selection is **matched to the endpoint host** so one exported key can't leak to a different vendor: a vendor key is used only when the base-URL host is that vendor's (`OPENROUTER_API_KEY` for an `openrouter.ai` host, `OPENAI_API_KEY` for an `openai.com` host). For any other host (a self-hosted gateway, Groq, a private proxy) set the generic `CONCEPT_SCANNER_API_KEY`; a vendor key is never sent to a host it doesn't match. Keyless endpoints (for example a local Ollama `/v1`) need no key.
 
-**A local `.env.local` during development.** If a file named `.env.local` sits in the directory you run the scanner from, it is read at startup and may supply any variable already in your environment's place, for the keys above and for the scanner's own `CS_*` / `CONCEPT_SCANNER_*` settings plus `DATA_DIR` and `OLLAMA_HOST`. A real environment variable always wins over the file. Two rules keep it to the case it exists for:
+**A local `.env.local` during development.** If a file named `.env.local` sits in the directory you run the scanner from, it is read at startup and may supply the scanner's own `CS_*` / `CONCEPT_SCANNER_*` settings in your environment's place, **except any API key and anything that steers what a key is spent on or where a run's data goes**: `DATA_DIR`, `CS_EXTRACT_MODEL`, `CS_TWO_PHASE`, `CS_SEMANTIC_BATCHING`, `CS_REMOTE_CONTEXT_CAP`, `CS_RECORD_EXAMPLES`, `CONCEPT_SCANNER_TESTS`, every `CS_BUDGET_*` and `CS_REMOTE_EXTRA_BODY`. Set those in your real environment. A real environment variable always wins over the file. (`OLLAMA_HOST` is not read: point at another local server with `--ollama-host`.) Two rules keep it to the case it exists for:
 
 - **Only those names are applied.** Anything else in the file is ignored and the run says how many were skipped. This matters because the file is read from the working directory, and the scanner is often pointed at a repository it did not write.
 - **It is not read at all inside the container image or in the GitHub Action**, where the working directory is the repository under scan. Those runs take their configuration from the environment you pass them. If a `.env.local` is present there, the run says it was ignored and why.
 
 ## First-run setup and the model shortlist
 
-On an interactive first run with no `--provider` (and no saved config), the scanner asks **Local (Ollama) vs Cloud**. Choosing Cloud shows a cost/quality-ranked shortlist, assembles the exact `--provider openai-compatible` command for the model you pick, and prints the `export <KEY>=...` line (the key stays in the environment, never a flag). `concept-scanner models --cloud` prints the same shortlist any time. Cost is verified against the live catalog on a dated snapshot; quality tiering is provisional until measured against this tool, so treat it as a starting point and verify current prices with your provider. Explicit flags, `--no-interactive`, or a saved config skip the prompt, so scripted and CI runs are unaffected.
+On an interactive first run with no `--provider` (and no saved config), the scanner asks **Local (Ollama) vs Cloud**. Choosing Cloud shows a cost/quality-ranked shortlist and **saves the model you pick** as the provider every command uses, then, if no key is found, shows the two ways to give one: `concept-scanner init --with-key` (saved once, for that endpoint only) or `export <KEY>=...` (never a flag), and the plain `concept-scanner scan <path>` to run once it is set.
+
+**In the window** (`concept-scanner ui`, or the Mac app and the Windows install), Settings does the same: an address, a model and a key, saved by one `init --provider openai-compatible --base-url ... --model ... --with-key`, with the key passed to it on standard input, never as an argument. A provider and key saved in the window are what a terminal or an agent then uses, and the reverse. `concept-scanner models --cloud` prints the same shortlist any time. Cost is verified against the live catalog on a dated snapshot; quality tiering is provisional until measured against this tool, so treat it as a starting point and verify current prices with your provider. Explicit flags, `--no-interactive`, or a saved config skip the prompt, so scripted and CI runs are unaffected.
 
 ## Endpoints and model strings
 
@@ -57,6 +60,13 @@ concept-scanner scan ./my-project \
   --provider openai-compatible \
   --base-url https://api.openai.com/v1 \
   --primary-model gpt-5.6
+
+# Or save the endpoint, the model and the key once, then scan with no flags,
+# from any terminal, an agent, or the window:
+concept-scanner init --provider openai-compatible \
+  --base-url https://openrouter.ai/api/v1 \
+  --model anthropic/claude-sonnet-5 --with-key   # paste the key, then Enter
+concept-scanner scan ./my-project
 ```
 
 The same `--provider` / `--base-url` / `--primary-model` flags work on the `bridges` and `triage` commands. **Semantic batching** (Avenue B) uses the same provider and model as discovery; no additional configuration is required.
@@ -131,7 +141,7 @@ budget is tunable with precedence **flag > env > config file > default**:
 
 - **Env:** `CS_BUDGET_<NAME>` (e.g. `CS_BUDGET_MERGE_REMOTE=24000`,
   `CS_BUDGET_CHARACTERIZATION=6000`).
-- **Config file:** a `"budgets"` object in `data/config.json`, e.g.
+- **Config file:** a `"budgets"` object in `~/.concept-scanner/settings.json`, e.g.
   `{"budgets": {"merge_remote": 24000, "synthesis": 12000}}` (only the keys you
   set change).
 - **Flags:** hidden `--budget-<name>` flags on `scan` / `triage` / `bridges`
@@ -146,5 +156,7 @@ with underscores).
 ## Privacy
 
 Local Ollama keeps your code on your machine (no API keys, no cloud calls). A remote provider **sends your source to that endpoint**. For proprietary code, prefer local Ollama or an endpoint you control.
+
+When a scan reads part of a repository first (the setup screens, or `--intent-from-docs` and `--coverage`), two more calls go to the same endpoint before the scan: one sends excerpts of the project's documents (up to 24,000 bytes in all) to ask what the project is for, and one sends the list of the repository's file paths (or its folders, when the list is too long for the model's window) to ask which of them implement each behaviour. A typed `--intent` or a saved plan skips the first; a saved plan skips both.
 
 > This is the one file permitted to name concrete providers by their wire identifiers (`openrouter`, `anthropic/claude-*`, `deepseek/deepseek-*`); the leak-guard allowlists it. Keep all other source and docs vendor-neutral.

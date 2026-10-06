@@ -45,7 +45,7 @@ services:
       ollama:
         condition: service_healthy
     volumes:
-      - ./:/workspace # the repo to scan; results land under the container's data dir
+      - ./:/workspace # the repo to scan; scans land in its data/ folder (the image sets DATA_DIR)
     working_dir: /workspace
     # No default command: pass one via `docker compose run`. Inside the scanner
     # container, reach the bundled Ollama at http://ollama:11434 (NOT localhost,
