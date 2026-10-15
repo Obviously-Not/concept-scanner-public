@@ -11,7 +11,7 @@ Direct link: [Security tab](https://github.com/Obviously-Not/concept-scanner-pub
 
 concept-scanner is a local-first command-line tool, with a window over the same commands, that reads source code on your machine and sends it to a locally running Ollama instance by default, or to a remote OpenAI-compatible provider only when you choose one. Reports in scope include:
 
-- Vulnerabilities in the scan pipeline that could leak source code to a non-local destination
+- Vulnerabilities in the scan pipeline that could leak source code to a non-local destination, including any way a file left out with `--exclude`, `--only`, a dropped folder, or the documents or tests setting reaches a model
 - Path traversal, symlink escape, or zip-bomb vulnerabilities in repository validation
 - Vulnerabilities in the audit-log or output-sanitization code paths
 - Vulnerabilities in `concept-scanner update`, which replaces the running binary or the Mac app: any way to make it install a file that is not a signed release, to install without the user's confirmation, or to leave a copy half-replaced; and any way to make a scan check for a release without the person's yes (that check is off unless they turn it on, and the setting lives in their home folder, out of reach of a repository being scanned)

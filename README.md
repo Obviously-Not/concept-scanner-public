@@ -9,7 +9,7 @@
 
 Local-first **engineering concept scanner** for codebases. Point it at a repository or directory and it surfaces distinctive technical mechanisms ("concepts"), scores them on four core engineering-quality axes (technical distinctiveness, implementation depth, problem specificity, generality) plus supplementary signals, and saves the results locally for you to review.
 
-The JSON output is shape-matched to the [Obviously-Not platform's](https://github.com/Obviously-Not) `code_scan` pipeline (`CharacterizationOutputSchema` v1.3.0) — engineering vocabulary only, no legal-statute language. Compatibility is by field-level inspection; it has not yet been validated against a live platform parser. Legal review is a separate, downstream step performed by qualified humans.
+The JSON output is a draft format an importer can read, with a version on each record type, in engineering vocabulary only, with no legal-statute language. Legal review is a separate, downstream step performed by qualified humans.
 
 By default all analysis runs against a local [Ollama](https://ollama.ai) model, so **your code stays on your machine**: no API keys, no cloud calls, no per-scan cost. You can optionally point it at a remote OpenAI-compatible provider (`--provider openai-compatible`), which sends your source to that endpoint; see [PROVIDERS.md](docs/providers.md). The only other request it makes asks GitHub for the latest release: when you run `concept-scanner update`, and, only if you have said yes to it, at most once a day when a scan starts. It sends nothing about you or your code.
 
@@ -31,7 +31,10 @@ the window's Settings says whether it is running.
 
 The window opens in your browser. Choose a folder and scan it, watch it run,
 review what it found, approve, reject or export it, and choose the model, or a
-cloud provider and its key, in Settings. Every action is one of this program's
+cloud provider and its key, in Settings. The scan screen's **Models for this
+scan** card picks each model a scan calls, as the terminal's models screen does,
+and says which ones the scan will download first. A suggested next step that
+needs a value opens its command's form with the rest filled in. Every action is one of this program's
 own commands, so a scan an agent starts appears in the window while it runs, and
 a model or key you choose there is what a scan from a terminal uses. Closing the
 browser tab leaves the window running; Quit stops it (or `concept-scanner ui
@@ -66,11 +69,13 @@ powershell -ExecutionPolicy ByPass -c "irm https://raw.githubusercontent.com/Obv
 #    "Running in Docker" below).
 
 # 3. Scan a local directory (or a remote repo URL).
-#    On the first run, setup asks Local (Ollama) vs Cloud, then a
-#    memory-aware picker helps you choose a model. At a terminal the scan
-#    then shows what the project is for (read from its own documents), which
-#    folders it would read first with their tokens and time, and asks before
-#    it starts (see "Reading part of a repository first").
+#    On the first run, setup asks Local (Ollama) vs Cloud. At a terminal,
+#    on a local Ollama, the scan then opens on its models screen (each model
+#    the scan calls, starting from the profile your machine's memory
+#    recommends), downloads any the server lacks after saying so, then shows
+#    what the project is for (read from its own documents), which folders it
+#    would read first with their tokens and time, and asks before it starts
+#    (see "Choosing a model" and "Reading part of a repository first").
 concept-scanner scan ./my-project
 
 # 4. Review the discovered concepts interactively
@@ -116,7 +121,7 @@ docker run --rm --add-host=host.docker.internal:host-gateway \
   scan /workspace --ollama-host http://host.docker.internal:11434
 ```
 
-For a remote provider instead of host Ollama, pass `--provider openai-compatible --base-url ...` and the API-key env var. The model defaults to the measured best-value option (see `concept-scanner models --cloud`); pass `--primary-model` to override. See [PROVIDERS.md](docs/providers.md).
+For a remote provider instead of host Ollama, pass `--provider openai-compatible --base-url ...` and the API-key env var. On OpenRouter the model defaults to the measured best-value option (see `concept-scanner models --cloud`); pass `--primary-model` to override. On any other endpoint pass `--primary-model` and `--secondary-model`; the scan asks for them before it sends anything. See [PROVIDERS.md](docs/providers.md). A remote scan shows its estimated cost before it spends; set `BUDGET_PER_OP`, `BUDGET_DAILY` or `BUDGET_MONTHLY` to stop one at a ceiling (see PROVIDERS.md).
 
 To bundle Ollama alongside the scanner (no host Ollama needed), use the included [`docker-compose.yml`](docker-compose.yml). Note: Ollama in a container is CPU-only unless a GPU is passed through (NVIDIA/Linux only; Docker on Apple Silicon cannot pass the GPU), so on a Mac the host-Ollama approach above is usually faster.
 
@@ -148,9 +153,9 @@ Inputs: `repo-path` (default `.`), `provider`, `base-url`, `model` (optional, de
 On an interactive first run (no `--provider` and no saved config), setup first asks
 **where inference runs**:
 
-- **Local (Ollama)** — private; your code stays on your machine. Falls through to the
-  memory-aware model picker below.
-- **Cloud (OpenAI-compatible endpoint)** — faster/larger models, but your source is sent
+- **Local (Ollama)**: private; your code stays on your machine. Falls through to the
+  models screen, or the memory-aware model picker, below.
+- **Cloud (OpenAI-compatible endpoint)**: faster/larger models, but your source is sent
   to the endpoint. Shows a **cost/quality-ranked shortlist** and saves the model you pick
   for every later scan. Your API key comes from the environment, or is saved once with
   `concept-scanner init --with-key` (never as a flag; see "Settings, keys and where they
@@ -165,11 +170,23 @@ well as their letters.
 
 ### Local model profiles
 
-The first interactive run shows a **memory-aware picker** that detects your RAM and
-recommends a profile, flagging any option too large for your machine. On Apple Silicon it
-also notes that MLX-optimized builds (an `-mlx` tag) run faster and can be chosen via
-Custom. Your choice is saved in `~/.concept-scanner/settings.json` in your home folder
-and reused on later runs. Re-pick your **local profile** any time with
+**At a terminal, a scan on a local Ollama opens on its models screen**, the first
+of the setup screens (see "Reading part of a repository first" for the others).
+It shows each model the scan calls (discovery, drafting, grading, and the second
+model of a multi-model scan), starting from the profile your machine's memory
+recommends, or from a model flag or your saved profile, and says which of them
+the server does not have yet. You can switch profile or change any one model.
+Continuing readies every one of them, downloading what is missing after saying
+so, before the next screen. On a first run the choice is saved as your profile.
+
+Where the screens do not run (a coverage flag such as `--intent`, a
+`--progress plain` display), the first interactive run shows the
+**memory-aware picker** instead; `concept-scanner init` always does. Both detect
+your RAM and recommend a profile, flagging any option too large for your
+machine. On Apple Silicon the picker also notes that MLX-optimized builds (an
+`-mlx` tag) run faster and can be chosen via Custom. Your choice is saved in
+`~/.concept-scanner/settings.json` in your home folder and reused on later
+runs. Re-pick your **local profile** any time with
 `concept-scanner init`, or save one with no questions with
 `concept-scanner init --profile <key>`. To use a cloud provider for every command,
 save it once: `concept-scanner init --provider openai-compatible --base-url <endpoint>/v1 --model <model>`,
@@ -177,17 +194,26 @@ and its key once: `concept-scanner init --with-key` reads it from stdin and keep
 A flag given to any command still wins over what is saved, and `concept-scanner init --json`
 shows what is saved and which environment variables are in force.
 
+Each figure counts every model a profile's scans call, the grader included,
+and is rounded up to the next whole GB. Every profile grades its concepts (Pass
+2) with `gpt-oss:20b`, which is why Fast needs 17 GB although its own discovery
+model is much smaller; `--skip-review` leaves the grader out. Which profile
+is recommended is your machine's answer: the picker, the models screen and
+`models` mark it. A 32 GB machine is recommended Fast, since Balanced's 23 GB
+is more than 70% of its memory; Balanced is still yours to choose.
+
 | Profile | Model(s) | Approx. RAM | Notes |
 |---------|----------|-------------|-------|
-| **Fast** | `qwen2.5-coder:7b` | ~7 GB | Quick scans on any laptop |
-| **Balanced** (recommended) | `qwen3-coder:30b` | ~22 GB | Best capability/size ratio |
-| **Validated** | `qwen3-coder:30b` + `gpt-oss:20b` | ~38 GB | Runs a second extraction model in parallel and merges (`--multi-model`). Pass 2 validation runs at every profile, not only this one |
-| **Thorough** | `qwen3-coder-next` | ~50 GB | Larger MoE model, slower |
-| **Custom** | any Ollama tag | — | Type your own model |
+| **Fast** | `qwen2.5-coder:7b` | ~17 GB | The smallest discovery model; its grader, `gpt-oss:20b`, sets the memory it needs |
+| **Balanced** | `qwen3-coder:30b` | ~23 GB | Best capability/size ratio |
+| **Validated** | `qwen3-coder:30b` + `gpt-oss:20b` | ~39 GB | Both models read every file and both synthesize concepts, and the two lists are merged with where they agree recorded in `agreement.json` (`--multi-model`), with each file's outcome, where your code was sent, and any step that degraded. Pass 2 validation runs at every profile, not only this one |
+| **Thorough** | `qwen3-coder-next:latest` | ~52 GB | Larger MoE model, slower |
+| **Custom** | any Ollama tag | depends on the model | Type your own model |
 
 Model resolution precedence: explicit flags (`--primary-model` / `--multi-model`) →
 the saved profile in `~/.concept-scanner/settings.json` → interactive picker (TTY only) →
-built-in defaults. To run
+built-in defaults. At a terminal where the setup screens run, the models screen
+opens on that choice and the scan calls what you leave it on. To run
 non-interactively (CI, scripts), pass `--no-interactive` with `--primary-model`:
 
 ```bash
@@ -199,18 +225,32 @@ concept-scanner scan ./my-project --multi-model \
   --primary-model qwen3-coder:30b --secondary-model gpt-oss:20b
 ```
 
-Missing models are auto-downloaded on first use unless you pass `--no-auto-pull`.
+**Every model a run calls is ready before its first call.** Each command that
+calls a model asks the server about every one of them first: a local Ollama
+server that lacks one gets it downloaded, after one line naming each model
+about to be downloaded, the flag that chose it, and, where the model registry
+records it, about how much it is; on a
+remote endpoint each model is checked against its catalog instead. Only then is
+anything sent. `--no-auto-pull`, which every command that calls a model takes,
+refuses the run instead, naming every missing model at once. A scan that shows
+no setup screen or start-up card (an agent's, CI's) prints one `Models:` line
+naming each model it calls, the flag that chose it, and the server. If Ollama is
+not answering, the message says which of four things is true: Ollama is not
+installed on this machine, it is installed and not running, the address is
+another machine's server, or the run was on an OpenAI-compatible server, which
+`ollama serve` does not start.
 Any installed Ollama model is accepted; unrecognized tags get a one-line note and run as-is.
 
 ## How it works
 
 1. **Collect** source files (skipping `vendor`, `node_modules`, `.git`, etc.).
-2. **Validate** the target before scanning — symlink-escape, device-file, and zip-bomb checks (remote clones also get repository size / file-count caps).
+2. **Validate** the target before scanning: a symlink that escapes it or a device file refuses the scan (remote clones also get repository size / file-count caps), and a `.zip` that would expand like a zip bomb is named in a note and left unopened, as every archive is.
 3. **Distill** each file with Principle-Based Distillation (PBD) via the local model.
 4. **Synthesize** candidate concepts.
-5. **Characterize** each concept on the four core engineering axes (technical distinctiveness, implementation depth, problem specificity, generality) plus supplementary signals (commonness, paradigm-shift). The commercial axes (product-centrality, defensibility) are emitted as `null` — concept-scanner doesn't have your market context, so a downstream consumer (your review process or platform ingress) fills these in. The output also carries the concept's key insight, inputs/outputs, components, and comparable techniques.
-6. **Enrich** with dependency-license risk and git authorship.
-7. **Save** results under `~/.concept-scanner/data/scans/` whatever folder you run from, a `SUMMARY.md`, and a provenance audit log under `~/.concept-scanner/data/audit/`. Set `DATA_DIR` to keep them somewhere else; the container image and the GitHub Action keep them in the scanned repository's `data/` folder.
+5. **Locate, then characterize.** A concept whose cited file did not resolve is first located (a path the model mangled is repaired, a location listing several files takes the first that exists, and triage asks the model which candidate file holds it), so a concept only that step can place is still characterized. Each concept is then scored on the four core engineering axes (technical distinctiveness, implementation depth, problem specificity, generality) plus supplementary signals (commonness, paradigm-shift). An axis the model did not score is `null`, never 0, and the text output says "not scored". The commercial axes (product-centrality, defensibility) are emitted as `null`: concept-scanner doesn't have your market context, so whatever reads the drafts next (your review process, or the app that imports them) fills these in. The output also carries the concept's key insight, inputs/outputs, components, and comparable techniques. A characterized concept still missing a field it requires (its category, technical approach, key insight, inputs and outputs, or components and how they interact) after the scanner has asked the model for the missing fields once more is held back (`required_field_missing`) rather than shipped incomplete.
+6. **Combine** concepts into bridges (Pass 3): concepts that work together, scored for how well they do. This is where a scan finds how its parts are arranged. It runs by default when inference is not billed per token (Ollama, wherever it runs, or an OpenAI-compatible server on this machine); `--no-bridges` skips it, and `--bridges` runs it against a hosted endpoint too, which a default never does because those calls are paid. Each bridge says whether its own text claims a feedback loop (`asserts_feedback_cycle`); that describes the text, not a check of the code.
+7. **Enrich** with dependency-license risk and git authorship.
+8. **Save** results under `~/.concept-scanner/data/scans/` whatever folder you run from, a `SUMMARY.md`, and a provenance audit log under `~/.concept-scanner/data/audit/`. Set `DATA_DIR` to keep them somewhere else; the container image and the GitHub Action keep them in the scanned repository's `data/` folder.
 
 Generation that hits its token cap **fails loud** rather than silently truncating, and all
 emitted text passes an output-layer check that keeps legal-statute vocabulary out of the results.
@@ -219,25 +259,26 @@ emitted text passes an output-layer check that keeps legal-statute vocabulary ou
 
 | Command | Purpose |
 |---------|---------|
-| `scan <path-or-url>` | Scan a directory or remote repo for concepts |
+| `scan <path-or-url>` | Scan a directory or remote repo for concepts; with `--resume <run-id>` the path may be left out, and the stopped run's is used |
 | `review` | List the stored scans as lineages, by the id to review each with, with their passes, counts, and the file-set flags a widening repeats |
 | `review <scan-id>` | Step through discovered concepts and approve/reject; those awaiting a decision come first, then `--sort score` (the default, strongest first) or `--sort file` |
 | `figure draw <scan-id> [concept-id]` | Draw a concept's figure (or `--all`) with your primary model: a small graph of how its components connect, stored in `figures.json` beside the scan (see "Figures") |
 | `figure apply <scan-id> <concept-id>` | Correct a figure by hand: `--rename`, `--remove` and `--add` change the concept's components; `--edge c1>c4=label` draws an arrow between two of them |
-| `submit <scan-id> <concept-id>` | Export an approved concept (or bridge) from that scan as a platform-shaped JSON draft; over a lineage, name a concept with its pass as `<pass-id>/<id>`, as `review --set` does |
+| `submit <scan-id> <concept-id>` | Export an approved concept (or bridge) from that scan as a JSON draft in the shape the importer reads; over a lineage, name a concept with its pass as `<pass-id>/<id>`, as `review --set` does |
 | `triage <scan-id> --workspace <path>` | Re-run grounding triage on a completed scan (`scan` runs it automatically; this re-runs after model/prompt changes) |
 | `bridges <scan-id>` | Discover cross-concept bridges (Pass 3 combinations) over a completed scan |
-| `models` | List the recommended model profiles + which are already pulled |
+| `models` | List the recommended model profiles, every model each one's scans call and what each does there, and which the server already has; the profile this machine's memory recommends is marked. Given the scan's model flags (`--primary-model`, `--draft-model`, `--secondary-model`, `--multi-model`, `--skip-review`, `--thorough`) it also says which models a scan given them would call, what it would download, and the `init` arguments that save that choice |
+| `models describe <model>` | Save what a model is for one endpoint: the window its server applies (`--window`, or `--measure` on a server on this machine), its largest answer (`--max-output`) and its think value (`--reasoning`); every later run on that endpoint uses it |
 | `bench` | Measure whether your model server actually runs requests in parallel |
 | `tiers run` / `tiers report` | Run one scan per model profile over one corpus and report what each produced |
 | `refusals <scan-id>` | Review what the quality gates held back, and who each verdict points at |
 | `review <scan-id> --why <concept>` | Say why one concept was held back: the gate, what it measured, and how the number it failed was set |
 | `review <scan-id> --set <id>=approved` | Record a decision without a prompt (`approved`, `rejected` or `skipped`, repeatable), for a script or an agent; it can change an earlier one, and `--json` reports the new tallies. Over a lineage, name a concept with the pass that found it: `<pass-id>/<id>` |
-| `status [run-id]` | Show what a scan is doing, or `--wait` for it to finish; `--running` lists every run in progress (see "Watching a scan") |
+| `status [run-id]` | Show what a scan is doing, or `--wait` for it to finish; `--running` lists every run in progress (see "Watching a scan"). For a scan strict Pass 2 stopped it offers the resume command, or says why it offers none (`resume_refused`) |
 | `anchoring-check` | Check whether a model is repeating the prompt back rather than reading the code |
-| `help --json` | Every command, argument and flag, with types, defaults, allowed values, what each argument names, and the rules between flags the commands enforce: the catalog a program can build forms or tool definitions from |
+| `help --json` | Every command, argument and flag, with types, defaults, allowed values, what each argument names, and the rules between flags the commands enforce: the catalog a program can build forms or tool definitions from; a flag that sets a value a person can change carries a `setting` (its key, area, what it bounds, built-in value and range) |
 | `ui` | Open the window: this program in your browser (`--stop` quits it, `--serve` runs its server in this terminal and opens no browser) |
-| `init` | Choose the model and the provider every command uses: the memory-aware picker, or `--profile <key>`, or `--provider openai-compatible --base-url <url> --model <id>` with no questions; `--json` shows what is saved |
+| `init` | Choose the model, the provider and the defaults every command uses: the memory-aware picker, or `--profile <key>` (with `--secondary-model` for a grader of your own, and `--multi-model` for a two-model profile), or `--provider openai-compatible --base-url <url> --model <id>` with no questions; `--<key> N` saves a default and `--budget-<name> N` an output budget; `--reset <key>` or `--reset all` removes them (a key this version does not know is removed only by name); `--json` shows what is saved, every adjustable value included |
 | `version` | Print the version and default models |
 
 ## Useful flags (`scan`)
@@ -247,20 +288,25 @@ emitted text passes an output-layer check that keeps legal-statute vocabulary ou
 | `--primary-model` / `--secondary-model` | Choose the model(s) explicitly (any installed Ollama tag) |
 | `--multi-model` | Run two local models in parallel and merge results |
 | `--no-interactive` | Skip the first-run picker; use saved config or defaults (for CI/scripts) |
-| `--skip-review` | Single-pass only — skip the Pass 2 validation model (faster) |
+| `--skip-review` | Single-pass only: skip the Pass 2 validation model (faster), so the grader is neither called nor downloaded |
 | `--thorough` | Use the larger, higher-quality model |
-| `--include-textbook` | Also emit concepts classified `textbook` (default: classify every mechanism, hold `textbook` back — see below) |
+| `--include-textbook` | Also emit what the quality gates hold back by default: concepts characterization scored below the distinctiveness floor (`characterized-score-floor`), whether or not they were classified `textbook` (see below) |
+| `--bridges` / `--no-bridges` | Pass 3 bridge discovery (combinations of concepts) runs by default when inference is not billed per token (Ollama, wherever it runs, or an OpenAI-compatible server on this machine); `--no-bridges` skips it, and `--bridges` runs it on a hosted endpoint too |
 | `--two-phase` | Experimental. Run generation as two calls (freeform distill, then structured extract) instead of one grammar-constrained call (see "Two-phase generation" below). Also settable via `CS_TWO_PHASE=1`. |
-| `--extract-model` | Phase-2 extraction model for `--two-phase` (default `gpt-oss:20b`). Also `CS_EXTRACT_MODEL`. |
-| `--timeout` | Per-request inference timeout (default 10m single-call, 30m under `--two-phase`). Raise for slow models or large batches. |
-| `--no-triage` | Skip the per-concept grounding triage pass (faster; leaves ungrounded concepts tagged `pending` instead of `file_missing` or `rescued`) |
+| `--extract-model` | Phase-2 extraction model for `--two-phase` (default `gpt-oss:20b` locally and the Pass 2 model on a remote provider). Also `CS_EXTRACT_MODEL`. |
+| `--timeout` | Per-request inference timeout (default 10m; under `--two-phase` at least 30m, a smaller value being raised, except for `--multi-model`'s own extraction, synthesis and merge calls, which take the value as given). A request that reaches it is sent at most twice in all, by the client, and no later stage sends it again; the error then says how many sends timed out. Raise for slow models or large batches. |
+| `--no-triage` | Skip the per-concept grounding triage pass (faster; leaves ungrounded concepts tagged `pending` instead of `file_missing` or `rescued`, and a concept only triage could locate is then not characterized) |
+| `--characterize-docs` | On a repository that is not docs-only, also characterize and gate its documentation concepts as code concepts are, so they ship as concepts (one characterization call each). Without it they are context for documentation matching only. A docs-only scan characterizes its documents anyway. The setup screens offer the same choice, saved for the repository |
+| `--resume <run-id>` | Carry on a scan that strict Pass 2 validation stopped, from that run's `unfinished.json`: discovery and every batch Pass 2 finished are re-used and the rest is run, as a new scan. The repository may be left out, and the stopped run's is used. What is compared is what the run used, never how its flags were spelled: the files collected, each by its content, whether Pass 3 runs, each model and its weights, every value that differs from its built-in one, and a remote endpoint's address. The resume is refused, with the reason, when any of those or this program's version changed since (timeouts, retries, how the run is shown and the spend ceilings may change). A scan started on the setup screens is resumed too: its record holds the flags that make the screens' choices, with the plan they chose saved under the scan's id in your home folder. The stopped run's error, `status` and the window's Resume card give the exact command |
 | `--tests` | How test files are used: `off` (default), `evidence` or `source` (see "Tests as evidence"). Also `CONCEPT_SCANNER_TESTS`. `--include-tests` is the older spelling of `--tests source`. |
-| `--no-auto-pull` | Fail if a model is missing instead of downloading it |
+| `--no-auto-pull` | Refuse the run when the local Ollama server lacks a model the run calls, instead of downloading it, naming every missing model at once with the flag that chose it. Every command that calls a model takes it |
 | `--no-semantic-batching` | Disable PBD-guided semantic batching (use size-based batching only) |
-| `--depth` | How many files may share one discovery call, 1 to 4. By default this is worked out from the file sizes, aiming at about two per call; this sets it. The `Depth:` line each scan prints says which of the two it was, and a number above the ceiling is cut down with the number you asked for named. Not available with `--multi-model`, which has no discovery batches |
+| `--depth` | How many files may share one discovery call, from 1 to the depth ceiling in force (4 built in; `--depth-ceiling` changes it, or `init --depth-ceiling N` saves it), or 0 to work it out from the file sizes, aiming at about two per call, which is the default. The `Depth:` line each scan prints says which of the two it was, and a number above the ceiling is refused before the scan starts, naming the range. Not available with `--multi-model` or a saved multi-model profile, which have no discovery batches |
 | `--allow-external-symlinks` | Allow symlinks pointing outside the repository (skips symlink-escape validation) |
 | `--ollama-host` | Ollama API URL (default `http://localhost:11434`) |
-| `--parallel-batches` | How many requests a scan keeps in flight (default 4). The model server serves as many at once as it has slots (Ollama's `OLLAMA_NUM_PARALLEL`, default 1) and queues the rest, so on a default server more is not faster. On a server with several slots, concurrent requests share the work and a scan is then **not byte-reproducible** run to run; use `1` when you need the same output twice. `models.json` beside each scan records the server's slots when the server runs on this machine and its log can be read |
+| `--local-only` | Refuse to run unless the model server is on this machine (`localhost` or a loopback address), judged from its host, and refuse a model a local Ollama runs on another machine, before anything is sent; give it on every run, since it is never saved. See [PROVIDERS.md](docs/providers.md#privacy) |
+| `--parallel-batches` | How many requests a run keeps in flight. By default one at a time against a model server on this machine (`localhost` or a loopback address) and 4 against a remote endpoint; a value you give, or save with `init` (whose picker asks for one, opening on that same rule and saving a number only when you change it), holds wherever the server is. The model server serves as many at once as it has slots (Ollama's `OLLAMA_NUM_PARALLEL`, default 1) and queues the rest, so on a default server more is not faster. On a server with several slots, concurrent requests share the work and a scan is then **not byte-reproducible** run to run; one at a time is what gives the same output twice. `models.json` beside each scan records the server's slots when the server runs on this machine and its log can be read. A scan run one at a time also reuses the answers of earlier scans to identical discovery requests (see "Reusing discovery answers") |
+| `--verify-cache` | Ask every discovery request again instead of reusing its stored answer, after unloading the model, and report whether each stored answer reproduced; one that did not is removed, and the scan exits 1. A scan in which the cache is off (see "Reusing discovery answers") checked nothing, so it also exits 1 and says why |
 | `--full-history` | Fetch full git history for richer file provenance |
 | `--json` | Machine-readable `{ data, next_steps, notice }` envelope (see "Machine-readable output") |
 | `--progress` | How the run is shown on stderr: `auto` (default), `live`, `static`, `plain` or `jsonl` (see "Watching a scan"). Also `CONCEPT_SCANNER_PROGRESS`. |
@@ -273,8 +319,10 @@ Run `concept-scanner scan --help` for the complete list.
 A large repository can take hours to scan whole. A scan can instead read the
 part closest to what the project is for first, and widen from there later.
 
-**At a terminal**, with none of the flags below, three screens come before the
-scan:
+**At a terminal**, with none of the flags below, setup screens come before the
+scan: on a local Ollama the models screen first (see "Choosing a model"), then
+these three. On a remote provider its models are chosen with the provider
+(`init`, or the window's Settings), so the three come alone.
 
 1. **Intent.** The scanner finds the project's own documents without a model
    (the README, other top-level Markdown, the package description, entry pages
@@ -303,17 +351,17 @@ Everywhere else (a coding agent, CI, `--json`, `--no-interactive`,
 | `--pin <glob>` | Always read files matching this glob in the first ring (repeatable). |
 | `--drop <path>` | Leave this exact path out of the scan and of every widening of it: a file, or a folder ending in `/` (repeatable). The flag form of a drop chosen on the setup screens. |
 | `--behaviour <text>` | A behaviour the project has, beside the purpose `--intent` states (repeatable, up to 8); the files implementing each are read first. Needs `--intent`. |
-| `--parent <scan-id>` | Widen an earlier scan: read only files no scan in its lineage has read, in the same order. `--coverage` is then the total share, by default 20 points more than what the lineage has read. A file edited since it was read is listed, not read again. |
+| `--parent <scan-id>` | Widen an earlier scan: read only files no scan in its lineage has read, in the same order. `--coverage` is then the total share, by default 20 points more than what the lineage has read. A file edited since it was read is listed, not read again. If the earlier scan's coverage record sits in a data folder inside the repository, or inside any git checkout, and this machine has no record of writing it (the container image and the Action keep scans in the repository), it is not trusted: the scan reads every file instead, as a first scan that continues no lineage, and says so. |
 | `--dry-run` | Show every ring this scan and each wider one would read, with its files, tokens and time; save the plan; read nothing with the model. |
-
-| `--changed` | With `--parent`, re-read the files of that lineage whose contents have changed since it read them. It re-runs the whole discovery call that held each one, not the file alone, because a file read on its own is a different question from the one that produced its concepts. A file git can see was RENAMED is followed instead, keeping its concepts; one that is GONE retires them. |
+| `--changed` | With `--parent`, re-read the files of that lineage whose contents have changed since it read them. It re-runs the whole discovery call that held each one, not the file alone, because a file read on its own is a different question from the one that produced its concepts. A file git can see was RENAMED with its content unchanged keeps its concepts' answers and is followed to its new path, in this pass and every later one, with no call (`--rerun-pure-renames 1` re-runs the calls that held it instead), and a `--changed` pass with nothing else to re-read is refused, naming the move; a renamed file that was also edited is re-read like any changed file. One that is GONE retires its concepts. |
 | `--with-dependents` | With `--changed`, also re-read the files that depend on a changed one (direct only, at most 50). Their own contents have not changed, so their concepts are not treated as out of date. |
 
 Each such scan writes `intent.json` (where the purpose came from, what was
 kept and dropped, and why) and `arc.json` (which files were read, the rank of
 every file, the lineage, and the estimate beside what the run took) beside the
 scan, and its summary and `--json` notice say that it read part of the
-repository. What you chose on the screens is kept per repository in
+repository; every scan result's `coverage` says how much of the repository it
+read and which lineage it belongs to. What you chose on the screens is kept per repository in
 `~/.concept-scanner/repos/` in your home folder, never in the data directory,
 so a later scan of the same repository opens on the ready screen and can widen
 from the last one.
@@ -325,13 +373,23 @@ whole-scan figure only after three earlier scans with the model.
 **Reviewing a widened scan.** Give `concept-scanner review` the id of your
 FIRST scan and it reviews every pass that continued it, saying so: `union of 3
 passes, 41 concepts (38 current, 2 stale, 1 retired)`. You do not need the
-other passes' ids. Each decision is saved against the pass that found the
-concept, so re-running an earlier pass cannot undo it. A concept whose file
-changed since it was found shows STALE with the two content hashes; one whose
-symbols are no longer in that file shows RETIRED with the names that no longer
-resolve. Both can still be approved and exported, and `submit` names the state
+other passes' ids. Two widenings of one scan are two branches, and both are
+reviewed. A concept found more than once, by two branches or by a later pass
+that re-read its file, is shown once: the same file, and either the same name or
+the same two or more code symbols named in its description, which is how a
+concept a model renamed between passes is still recognised. A pass the review
+leaves out is named, with why, under NOT SHOWN.
+Each decision is saved against the pass that found the concept (and against
+every branch's copy of it), so re-running an earlier pass cannot undo it. A concept whose file
+changed since it was found shows STALE with the two content hashes, unless a
+later pass re-read the file and found it again, which makes it current; one
+whose symbols are no longer in that file shows RETIRED with the names that no
+longer resolve, as does one naming no code symbol that a re-read did not find
+again. Both can still be approved and exported, and `submit` names the state
 rather than refusing: those are disclosures about a concept's evidence, not
-verdicts on whether the mechanism exists. A concept the store cannot load is
+verdicts on whether the mechanism exists. A concept whose file was renamed
+shows MOVED, and `review --json` and `submit` give it at the path the file has
+now. A concept the store cannot load is
 reported as INCOMPLETE rather than quietly left out.
 
 ## Concept output and grounding state
@@ -349,14 +407,21 @@ scanner verified its `location.file`:
 | State | Meaning |
 |-------|---------|
 | `grounded` | The path the model emitted resolves to a real file in the workspace as-is. |
-| `repaired` | The model emitted a malformed path that the finalize-pass automatically fixed (e.g. `src/foo.ts` → `app/src/foo.ts`). |
+| `repaired` | The model emitted a malformed path that the finalize-pass automatically fixed (e.g. `src/foo.ts` → `app/src/foo.ts`), or a location listing several files, of which the first that exists was taken (the list is kept in `grounding_original_file`). |
 | `rescued` | A fuzzy basename search or LLM triage call found the real file the concept actually lives in. The original LLM-emitted path is preserved in `grounding_original_file`. |
-| `file_missing` | The triage pass searched candidate files but couldn't ground the concept anywhere — most likely a hallucination. |
+| `file_missing` | The concept named a file that exists nowhere in the workspace, and triage could not ground it anywhere: most likely a hallucination. A concept that named no file is never `file_missing`, since nothing it cited is missing. |
 | `uncertain` | Triage ran but the model wouldn't commit either way. |
-| `pending` | Triage was skipped (`--no-triage`). |
+| `pending` | Not verified: triage was skipped (`--no-triage`), every triage call for the concept failed, or the concept named no file and there was nothing to search for it with or no file holds any of its terms. |
 
-Downstream consumers typically filter on `grounded`, `repaired`, or `rescued`
-and treat `file_missing` / `uncertain` with appropriate skepticism.
+`file_missing` and `uncertain` concepts are held back rather than shipped (the
+scan counts them as `ungrounded_dropped`, and `refusals <scan-id>` lists them).
+A `pending` concept ships, unverified and, with no file to read, not
+characterized; treat it with skepticism.
+
+Every scoring axis is a number when the model scored it and `null` when it did
+not: a 0 is a score, never a stand-in for a missing one. The text output and
+`SUMMARY.md` say "not scored" for a concept no axis scored, and `SUMMARY.md`
+lists such concepts in a section of their own.
 
 ## Figures
 
@@ -375,7 +440,18 @@ arrow you draw between two components (`--edge c1>c4=feeds`) is exported with
 the concept as `component_edges`, `{"from": "c1", "to": "c4", "label": "feeds"}`;
 an arrow touching a dashed part stays on the figure. The arrows the model drew
 are never exported. The window shows each figure in its review screen, with the
-same corrections.
+same corrections, and asks before a redraw discards arrows you drew.
+
+A concept you have already exported can be exported again after a correction:
+`submit` writes the draft once more and the importer reads it as an update to the
+draft it holds. A second export with nothing changed is refused and says so.
+
+A figure draws 2 to 12 parts, so a correction is refused where it would take the
+count further outside that: a concept that already carries more parts than a
+figure draws can still be renamed, re-described or given an arrow, and a removal
+that brings it closer is allowed. A concept that carries more parts than a figure
+draws is drawn as far as the limit, and the figure's note says how many of its
+parts are not drawn.
 
 ## Tests as evidence
 
@@ -383,12 +459,9 @@ Test files are not read as a source by default. A test's setup data can
 describe a mechanism that does not exist, and a model that reads it as real
 ships a concept that is not in your code. Instead, after a scan decides which
 concepts it ships, each concept is paired with the tests beside it that use the
-declarations in its line range: for Go, the test functions in its own
-directory; for TypeScript and JavaScript, the `.test.` and `.spec.` files in
-its directory and its `__tests__` directory; for Python, the test files in its
-directory and the `tests/` or `test/` files named for its module or mirroring
-its path. Go is read from its syntax tree and the other three by pattern, which
-is less exact (see below). Models usually give no
+declarations in its line range, among the test functions in its own
+directory, read from the syntax tree. Only Go is paired: TypeScript,
+JavaScript and Python concepts are counted and not paired (see below). Models usually give no
 line range, so then the tests that use a declaration the concept's description
 names come first, ahead of the rest of the file's tests. No model is involved,
 no concept changes, and the result is written beside the scan as `tests.json`,
@@ -401,27 +474,27 @@ Tests: 12 of 30 shipped concepts are paired with tests that exercise them (tests
 | `--tests` | What it adds |
 |-----------|--------------|
 | `off` (default) | Pairing only. No model reads a test. |
-| `evidence` | Also asks the model what each concept's paired tests assert that its description does not say, one call per paired concept. A property is kept only when its quote is found in the test's name, a failure message reported on the test's own `t`, the condition that guards one, or a case label the test prints and does not pass to the code under test, and when its statement repeats no phrase found only in the test's setup data. In TypeScript, JavaScript and Python the quote may come from the test's name or its assertion lines (`expect(...)`, `assert ...`), and there is no setup check. Every rejection is listed with its cause. The check is on where a quote comes from; it cannot tell whether the statement reads the assertion correctly. |
-| `source` | `evidence`, plus test files and test directories are read as a source, in batches of their own, for mechanisms that live only in tests, such as a test harness. |
+| `evidence` | Also asks the model what each concept's paired tests assert that its description does not say, one call per paired concept. A property is kept only when its quote is found in the test's name, a failure message reported on the test's own `t`, the condition that guards one, or a case label the test prints and does not pass to the code under test, and when its statement repeats no phrase found only in the test's setup data. Every rejection is listed with its cause. The check is on where a quote comes from; it cannot tell whether the statement reads the assertion correctly. |
+| `source` | `evidence`, plus test files and test directories are read as a source, in batches of their own, for mechanisms that live only in tests, such as a test harness. Tests are read with the data they construct masked, in discovery and in characterization, and under `--multi-model` before either model reads the file, so a fixture's made-up values cannot become a concept's, and a concept whose name or summary still copies one, or the placeholder that masked it, is held back (`copied_test_data`). |
 
 Tests often state what a mechanism refuses or never does, which a description
 of what the code does tends to leave out, so `evidence` is where to look for
 it.
 
-What pairing cannot see: concepts in other languages are counted, not paired; a
-test outside its language's convention that exercises the same code is not
-seen; in TypeScript, JavaScript and Python a declaration or test written in a
-form the patterns do not list is missed, and a name a test declares itself can
-pair by accident; and pairing uses the line range a model wrote, so a wrong
-range pairs the wrong tests. Whether the pattern-based languages pair well
-enough to keep is being measured (precision and recall of at least 0.7 against
-hand labels on one real repository each). `tests.json` records the names each test was paired on, so you can check
+What pairing cannot see: concepts in languages other than Go are counted, not
+paired; a test outside the concept's directory that exercises the same code is
+not seen; and pairing uses the line range a model wrote, so a wrong range pairs
+the wrong tests. TypeScript, JavaScript and Python were paired by pattern in
+1.3.0 and are not any more: measured against hand labels on one real
+repository each, that pairing found about one in five of the tests that
+exercise the code (recall 0.18 and 0.19, where 0.7 was required), because
+those tests mostly live away from the code they test. `tests.json` records the names each test was paired on, so you can check
 why. It is not part of the `--json` envelope, and nothing in it changes a
 concept.
 
 ## Classification (`distinctive` / `borderline` / `textbook`)
 
-The scanner **surfaces and classifies every mechanism it finds — it never
+The scanner **surfaces and classifies every mechanism it finds; it never
 silently drops one.** Each concept carries a `classification`:
 
 | Class | Meaning |
@@ -432,9 +505,11 @@ silently drops one.** Each concept carries a `classification`:
 
 The keep/drop decision is a **downstream, tunable step**, not something the model
 does in the prompt: by default the results include `distinctive` + `borderline`
-and **hold `textbook` back** (the count is reported so nothing is hidden). Pass
-`--include-textbook` to include them. This is why a capable frontier model no
-longer returns an empty set on a thin codebase — it classifies the standard
+and **hold `textbook` back when characterization also scores it below the
+distinctiveness floor** (the count is reported so nothing is hidden); a concept
+classified `textbook` and scored at or above the floor ships, with its
+classification. Pass `--include-textbook` to include what is held. This is why a capable frontier model no
+longer returns an empty set on a thin codebase: it classifies the standard
 patterns as `textbook` rather than self-censoring to nothing.
 
 ## Semantic batching (dual-avenue discovery)
@@ -477,20 +552,65 @@ Supported languages: Go, TypeScript, Python, Markdown. For unsupported languages
 request with a compressed store (~3-10KB for a medium project). The discovery
 calls per batch are identical to Avenue A.
 
+## Reusing discovery answers
+
+A scan run one request at a time (the default against a model server on this
+machine, or `--parallel-batches 1`) keeps each discovery request's answer, and
+a later scan that sends an identical request (the same files with the same
+contents, the same model on the same model server and server version, and the
+same request settings, including a model's think setting and anything set for a
+remote endpoint) reuses it instead of asking again. Re-scanning after a small edit then asks again only for
+the batches whose files changed. Each scan says what it did:
+
+```
+Discovery cache: 5 answer(s) reused, 1 asked, 0 answer(s) naming no concept asked again; about 1m32s of model time and 2357 output tokens saved; 1 asked again to check: 1 reproduced, 0 differed and were removed.
+```
+
+- **Only scans run one batch at a time reuse answers.** Run that way, a scan was
+  measured giving exactly the same answers every time; with several batches at
+  once it was not. A scan with several batches in flight (the default of 4 on a
+  remote endpoint, or a number you gave or saved) reuses nothing and its notice
+  says so. Since a local scan now runs one at a time unless told otherwise, it
+  reuses answers by default.
+- **Every scan that reuses answers checks one**: it asks that request again,
+  after unloading the model, and compares. An answer that does not reproduce is
+  removed and named in the notice, and the rest of that scan asks every request
+  again rather than reuse one. `--verify-cache` checks every one.
+- **An answer that named no concept is always asked again**, so a model that
+  goes quiet on a file stays visible. A failed request is never kept, and
+  neither is an answer to a prompt the server cut short.
+- **The answers live in your user cache folder**, never in the folder being
+  scanned (on macOS `~/Library/Caches/concept-scanner/discovery`, on Linux
+  `~/.cache/concept-scanner/discovery`, on Windows
+  `%LocalAppData%\concept-scanner\discovery`). Deleting that folder is always safe;
+  the next scan asks again.
+- **On a cloud endpoint** a reused answer is one of the answers it gives, since a
+  remote model is not reproducible, and a model changed behind the same name
+  cannot be detected. For the same reason a remote scan does not check a sample;
+  `--verify-cache` still asks every one again and reports what differed.
+- **The cache is off** for two-phase and `--multi-model` discovery, under
+  `--record-examples` (which records every request), in each `tiers run` arm
+  (whose time and answers are the measurement), and when
+  `CS_DISCOVERY_CACHE_OFF` is set. The `Discovery cache:` line says which.
+
 ## Two-phase generation (`--two-phase`, experimental)
 
 By default each generative pass (discovery, characterization, bridge synthesis)
-is a single call whose decode is grammar-constrained to a JSON schema. That is
-fast and reliable for instruct/code models, but it leaves a reasoning model no
-room to reason (the schema forces JSON tokens from the first token) and, on a
-remote provider, tends to under-populate the descriptive fields.
+is a single call that answers in JSON from its first token (discovery and bridge
+synthesis under a JSON schema; characterization from the fields its prompt
+names, with no schema on Ollama's own API and its own schema on an
+OpenAI-compatible endpoint, a server on this machine included). That is fast
+and reliable for
+instruct/code models, but it leaves a reasoning model no room to reason and, on
+a remote provider, tends to under-populate the descriptive fields.
 
 `--two-phase` runs each of those passes as **two** calls instead:
 
 1. **Distill (freeform):** the primary model describes the mechanism in prose,
    with no schema constraint, so a reasoning model can actually reason.
 2. **Extract (structured):** a fast instruct model (`--extract-model`, default
-   `gpt-oss:20b`) turns that prose into the schema-shaped JSON.
+   `gpt-oss:20b` locally and the Pass 2 model on a remote provider) turns that
+   prose into the schema-shaped JSON.
 
 This mirrors the pattern the scanner is shape-matched to, and is expected to let
 reasoning models participate in discovery and to populate the descriptive fields
@@ -512,7 +632,7 @@ item make wall-time meaningfully higher than the single-call path.
 ## Machine-readable output (`--json`)
 
 `--json` is accepted by every command that produces output (`scan`, `review`,
-`submit`, `bridges`, `triage`, `models`) and emits the same platform-aligned
+`submit`, `bridges`, `triage`, `models`) and emits the same
 HATEOAS envelope: the same shape on success and on error, so one parser handles
 all of them. Progress goes to stderr, so stdout is pure JSON. (`review --json` is
 a non-interactive **status** projection; it reports the current review state
@@ -529,7 +649,7 @@ stay distinguishable.)
       "args": ["review", "scan-1782"],
       "priority": "high", "reason": "Approval gates submission", "timing": "soon" }
   ],
-  "notice": "12 textbook-classified concept(s) held back (use --include-textbook to include them). This run put 40 file(s) in front of the model, and reports 9 concept(s) while holding back 12. Anything not listed was not assessed."
+  "notice": "12 concept(s) classified 'textbook' and scored below the floor held back (use --include-textbook to include them). This run put 40 file(s) in front of the model, and reports 9 concept(s) while holding back 12. Anything not listed was not assessed."
 }
 ```
 
@@ -543,15 +663,35 @@ sentence; a human-readable scan prints it as its `Coverage:` line. On failure,
 command runs (a flag it does not have, a missing argument) when `--json` was
 given. A step that runs this program with nothing left to fill in also carries
 `args`, its arguments after the program's name, so a program can run it without
-a shell reading `command` back; a step with a `<placeholder>` has none.
+a shell reading `command` back. A step that needs a value first (a model, a
+file) carries `prefill`, the arguments it does have, and `fill`, each value
+still to give as its `command` shows it (`--primary-model <model>`); it is
+never run as it is, and the window opens that command's form with the rest
+filled in. A step has `args` or `prefill`, never both, and a step that points
+at a document has neither.
+
+A scan's `data` is the scan result, version 2.0.0 of its shape. It names the
+repository by its git origin URL, with any credentials removed, or by its
+folder's name when it has none, never by a path on your machine; says how much
+of the repository the scan read (`coverage`) and which folders it skipped
+(`directories_skipped`); gives its time as `duration_ms`; and gives its cost
+in US dollars, or `null` when a remote call that read or wrote something had
+neither a listed price nor a cost its endpoint reported (a call that read and
+wrote nothing costs 0). The cost includes Pass 5 whichever command ran it:
+`scan --synthesize`, or `synthesize`, which adds its run's Pass 5 spend to the
+stored scan's cost, and `synthesis_cost.cost` is Pass 5's own part.
+`dependency_map` names a file by its path in the repository, or a licence in
+the module cache by `module@version`, never by a folder on your machine.
 
 **Exit codes:** `0` success; `1` a usage, configuration or other general error;
 `3` the model or the model server (not running or stuck, a model missing or not
 downloadable, a model the endpoint does not have, a model call that failed, or a
 pass whose every call failed). `2` is reserved. Every command's output
-(and every error) carries at least two prioritized `next_steps` with a reason and
-a ready-to-run `command`, so a human or an AI agent always knows what to do
-next — including when zero concepts are returned.
+(and every error) carries at least two prioritized `next_steps`, at most five,
+each with a reason, so a human or an AI agent always knows what to do next,
+including when zero concepts are returned. A response with fewer than two steps
+of its own is given general ones for the command that ran (its options, and
+where to look next), never another command's.
 
 ## Watching a scan
 
@@ -591,14 +731,18 @@ a terminal, or an agent does:
 
 | In `~/.concept-scanner` | Holds |
 |---|---|
-| `settings.json` | The model profile, the provider with its endpoint and model, `think` settings, output budgets, and your yes or no to the update check |
+| `settings.json` | The model profile, the provider with its endpoint and model, `think` settings, output budgets, saved defaults, and your yes or no to the update check |
 | `credentials.json` | API keys saved with `init --with-key`, readable only by you, each saved for one endpoint |
 | `data/` | Scans, the audit log, and each run's status and log (`DATA_DIR` moves them) |
 | `repos/` | Each repository's purpose, pins, drops and last scan, which the setup screens and `scan --dry-run` show |
 | `ui.json`, `ui.log` | While the window runs: its address and the secret it gives your browser, and its log |
 
-`concept-scanner init --json` shows what is saved. To use a cloud provider with no
-questions, and save its key once:
+`concept-scanner init --json` shows what is saved. Output budgets, the most
+tokens a model may write in one answer per kind of call, are saved with
+`concept-scanner init --budget-<name> N` or in the window's Settings, and a
+command's `--budget-<name>` changes one run; see
+[PROVIDERS.md](docs/providers.md#advanced-output-token-budgets). To use a cloud
+provider with no questions, and save its key once:
 
 ```bash
 concept-scanner init --provider openai-compatible --base-url <url> --model <model-id> --with-key
@@ -620,8 +764,10 @@ spent on.
 - [Ollama](https://ollama.ai) installed and running, for scans on your own computer
   (open the Ollama app, or `ollama serve`)
 - For the Mac app, macOS 12 or later; for the Windows installer, 64-bit Windows 10 or 11
-- Enough RAM/VRAM for the chosen model. The picker flags profiles that exceed your
-  detected memory; the **Fast** profile (`qwen2.5-coder:7b`) runs on most laptops.
+- Enough RAM/VRAM for the chosen models. The picker and the models screen flag
+  profiles that exceed your detected memory. The smallest, **Fast**, needs about
+  17 GB, set by its grader (`gpt-oss:20b`); with `--skip-review` its scans call
+  only its discovery model (`qwen2.5-coder:7b`).
 
 ## Privacy
 
@@ -637,7 +783,8 @@ being described here:
   reachable, checking any `think` settings you saved against what each model
   accepts, and recording what the server ran a scan with;
 - **the provider you chose**, when you run with `--provider openai-compatible`
-  on your own key, for inference and that provider's model list (when a scan
+  on your own key, for inference, that provider's model list, and, for a server
+  on this machine, asking it the window it holds a model at (when a scan
   reads part of a repository first, that includes excerpts of the project's
   documents and the list of its file paths);
 - **GitHub's public releases page for this project**, for checking for a newer
@@ -661,12 +808,12 @@ not ours. Run the model server locally and the code never leaves the machine.
 
 - [TROUBLESHOOTING.md](docs/troubleshooting.md): common failure modes and recovery
 - [CHANGELOG.md](CHANGELOG.md): what changed between releases
-- [SECURITY.md](SECURITY.md) — how to report security issues privately
-- [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) — Contributor Covenant 2.1
-- [patent-skills](https://github.com/Obviously-Not/patent-skills) — a sibling
+- [SECURITY.md](SECURITY.md): how to report security issues privately
+- [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md): Contributor Covenant 2.1
+- [patent-skills](https://github.com/Obviously-Not/patent-skills): a sibling
   open-source project in the ObviouslyNot ecosystem (AI agent skills for patent
   scanning). A link for context, not a dependency: concept-scanner runs standalone.
 
 ## License
 
-Apache-2.0 — see [LICENSE](LICENSE).
+Apache-2.0; see [LICENSE](LICENSE).

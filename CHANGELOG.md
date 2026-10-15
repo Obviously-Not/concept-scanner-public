@@ -6,6 +6,1952 @@ All notable changes to concept-scanner are recorded here. The format follows
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-10-14
+
+**This release changes the output contract to 2.0.0** (the concept, the bridge
+and the scan result's `--json` envelope): a program that reads 1.x output must
+update. What changed is listed under Changed, "The output contract is 2.0.0".
+
+### Added
+
+- **`help --json` says which runs of a command change nothing**
+  (`query.writes`: the flags that make a run change something, on `models`,
+  `status`, `review` and `init`).
+- **A scan's `--json` envelope says whether its model calls were billed per
+  token** (`billed_per_token`, always present: true when the inference left
+  this machine, false for Ollama wherever it runs and for an OpenAI-compatible
+  server on this machine). The scan's `notice` carries the sentence the
+  terminal's summary prints about the cost, such as "Cost: $0.0000 (Ollama, not
+  billed per token).", and the window shows it beside a finished scan's cost.
+- **`help --json` lists, for each argument a command can need, the text it
+  refuses a command line without it with** (`args[].message`), and for `scan`'s
+  repository the flag that stands for it (`args[].required_unless`: `--resume`).
+- **More options on the window's review, export, figure and Settings
+  screens**, opening the command with what the screen already has.
+- **`help --json` lists each required option as a rule** with the text the
+  command refuses it with.
+- **`review --json` gives each concept the lines review prints before you
+  decide** (stale with why and both content hashes, retired with the symbols no
+  longer in its file, moved with its file, found again by another pass) as
+  `concept_disclosures`, and the lineage's header, members that could not be
+  loaded and passes not shown included, as `lineage_header`, word for word as
+  the terminal prints them.
+- **A running command's status line is in its `status.json` and on every
+  `--progress jsonl` event as `status_line`**: the stage, the call timer, the
+  time left for the stage and the whole scan or "rest unknown", a retry, tokens
+  and cost, exactly as the terminal's live line shows them. `status` prints the
+  same line.
+- **`models` takes `--provider`, `--base-url` and `--ollama-host` as a scan
+  does**, and says whether a scan given them runs on a remote provider
+  (`choice.remote`, `choice.provider_saved`, and a line in the table).
+- **With a repository's saved setup, `scan --dry-run --json` gives the
+  arguments that run it again with no setup call** (`saved_setup.args`), saved
+  picks and coverage included, and says why when there are none
+  (`saved_setup.args_note`).
+- **`help --json` lists each rule between flags with the words a command refuses
+  it with** (`message`), marks required flags (`required`), and lists
+  `distill gate`'s "one of `--incumbent` or `--calibrate`" and `status
+  --running` with a run id.
+- **`agreement.json` says, for each concept both models named, whether their
+  concepts cite a common file**, and counts those that cite none. The grouping
+  and the labels are unchanged.
+- **A characterization answer that leaves out the technical distinctiveness
+  score is asked once more** with the same request; the score is taken from the
+  second answer only when it carries one, and nothing else of that answer is
+  used.
+- **A scan says how many of the concepts it ships carry no technical
+  distinctiveness score**, which the score floor cannot judge: in its closing
+  caveat (the `--json` notice and the Coverage line) and as `unscored_shipped`
+  in the scan result.
+- **A concept with no line range carries `contributors` and
+  `authorship_caveat`** when it is in a Go file and its own text names
+  declarations of that file: git blame runs over those declarations' lines,
+  each line counted once. Discovery writes no line ranges, so until now no
+  concept carried contributors. Other languages still get none without a range.
+- **A scan started on the setup screens can be resumed.** When strict Pass 2
+  validation stops it, its record holds the flags that make the choices made
+  on the screens, with the plan they chose saved in your home folder
+  (`~/.concept-scanner/repos/<key>/plans/<scan-id>.json`), so the resume
+  command it prints runs the same scan without the screens and makes no setup
+  call. Only a plan that could not be saved leaves a run that cannot be
+  resumed, and the record says why.
+- **`models` answers for a choice of models**: it takes the scan's model
+  flags (`--primary-model`, `--draft-model`, `--secondary-model`,
+  `--multi-model`, `--skip-review`, `--thorough`), and its `--json` gives the
+  choice a scan given them would run: each role's model, the form values that
+  run it, what would be downloaded, whether it is what a scan with no model
+  flag runs, and the `init` arguments that save it. Its human output names the
+  choice too. The window's models card shows that answer and applies no rule
+  of its own.
+- **`init --secondary-model` and `init --multi-model`** save a grader or a
+  second model of your own (a multi-model profile needs its second model),
+  so the window keeps such a choice as the terminal's models screen does. A
+  lone `--secondary-model` replaces the saved profile's grader, as a scan
+  reads one.
+- **`synthesis_cost.cost`**: what Pass 5's calls cost, in US dollars (0 when
+  the run is not billed per token, `null` when a call could not be priced).
+- **`status` says why it offers no resume** (`resume_refused` in `--json`,
+  and in its human output and the window's Running screen).
+
+- **A next step that needs a value opens its command's form.** A step such as
+  "try a different model" now carries `prefill`, the arguments it has, and
+  `fill`, each value still to give, so the window opens the form with them in
+  place; `args` still means a step that runs as it is, and a step has one or
+  the other.
+- **`scan --resume` is offered where a stopped scan is reported**: a scan that
+  strict Pass 2 validation stopped leads its failure with the resume step,
+  `status` of the stopped run offers it, and the window's Running screen shows
+  a Resume card (`unfinished.json` 3.1.0 keeps the resume arguments).
+- **The values a run changed are in its progress stream and its status file**:
+  `run_start` and `status.json` (1.2.0) carry `settings_changed`, and the
+  window shows them.
+- **`arc.json` 1.9.0 says what kind of pass a scan was** (`pass_kind`: a first
+  ring, a widening, or a re-read), and a re-read's caveat says its files
+  changed.
+- **The window:** a stored scan's Widen and Re-read buttons appear only when
+  `review --json` offers the step (`widen`, `reread`), widening from the newest
+  pass as the terminal does; Export appears for a submitted concept only when
+  an export would change what was sent (`export_changed`); every table scrolls
+  on its own and, below 720 pixels, the tabs take their own row; Settings shows
+  each saved value; a number field alone carries a minimum and maximum; a form
+  refuses a combination of flags its command refuses, in the command's words,
+  before running; and `ui`, finding a window already running, names each value
+  it keeps from when it started that differs from the one given or saved now.
+- **A models screen before the other setup screens**, in the terminal and in
+  the window's scan form: each role a scan calls (discovery, drafting,
+  grading, and the second model of a multi-model scan), opening on the
+  profile this machine's memory recommends unless a flag or the saved profile
+  chose, and changeable among the supported models. Every model a run calls
+  is readied before its first call, a download is announced before it starts,
+  and `--no-auto-pull` refuses the run naming every missing model at once, on
+  every command that calls a model. `models --json` gains `calls`,
+  `model_roles`, `opens_on`, `default_grader`, `choice` and `download_bytes`.
+- **`scan --resume <run-id>`** resumes a scan that strict Pass 2 validation
+  stopped, from its `unfinished.json` (now 3.0.0), re-using every batch the
+  stopped run finished. It is refused, with the reason, when the repository's
+  files, the models or the scan's settings changed since; the stopped run's
+  error prints the exact command.
+- **`--rerun-pure-renames`**: by default a covered file renamed with its
+  content unchanged keeps its answers and is followed, in every later pass;
+  `1` re-runs the compositions that held it.
+- **What served a call and what it cost, where the endpoint says**:
+  `calls.jsonl` rows gain `served_by` and `cost_reported`, `models.json`
+  (1.7.0) gains `served_by`, a reported cost is counted by the spend ceilings
+  and charged in the envelope, and a closing `prompt reuse:` note says how
+  much of each stage's prompts a server reused.
+- **`--characterize-docs`**: on a repository that is not docs-only, its
+  documentation concepts are characterized and gated as code concepts are, and
+  ship as concepts. Without it they stay context for documentation matching, at
+  no extra model call. The setup screens offer the same choice, saved for the
+  repository, and the window's scan form offers the flag.
+- **`tests.json` 2.2.0 says how each paired test was found** (`found_by`:
+  beside the code, or by importing it).
+- **A concept no axis scored says "not scored"** in the scan's output and in
+  `SUMMARY.md`, which lists such concepts in a section of their own, never as
+  0%.
+- **Each concept of a `--multi-model` scan says how the two models met in it**
+  (`model_agreement`, Concept 1.14.0): whether both named it, described it
+  differently, or only one did, or why no merge judged it; which models named
+  it; and the merge model's own note. A single-model scan carries no
+  `model_agreement`. Until now the same record reached only `agreement.json`
+  beside the scan. A platform that has not declared the key yet reports it and
+  does not store it.
+- **93 more defaults can be changed** (the defaults plan's second wave): the
+  model transport (each client's request timeout when a command gives none, one
+  retry policy for both clients, requests in flight, the remote warm-up's wait
+  and cap, the truncation escalation, the introspection and pre-flight
+  timeouts), the context windows (the caps, the template margin, characters per
+  token, the window floor, and the cut and ceiling tolerances), the memory
+  sizing behind the model picker, the spend alert share, batching and depth,
+  the largest file a scan reads (one setting for both scan paths),
+  characterization's retries and the gates on what ships, the intent and locate
+  calls' limits, the time estimate's priors and floors, distill gate's
+  calibration bars and judge cap, the `--record-examples` capture budget, and
+  how much of a child process's error output is kept. The ten flags these
+  values already had (`--timeout`, `--parallel-batches`,
+  `--bridge-max-components`, `--bridge-max-candidates`, `--min-doc-relevance`,
+  `--enrich-threshold`, `--min-synthesis-score`, `--max-patterns`,
+  `--triage-max-candidates`, `--triage-min-keywords`) keep their names and can
+  now be saved with `init` and changed in Settings.
+- **`anchoring-check` says how many words the open arm named alone**
+  (`open_only_count`), as it does for its other two lists.
+- **The window groups the values each command takes by area, with a search,**
+  and says each value's range and built-in value. A form's values sit in a
+  Defaults block, one closed group per area, opened by a search or by a value
+  given in it; a field left empty takes the saved value, else the built-in
+  one. `help --json` gives each flag that sets such a value a `setting` (its
+  key, area, what it bounds, built-in value and range), and each `init --json`
+  defaults row gains `range_text`.
+- **A local server's window is read from the server, where it says.** On
+  `--provider openai-compatible` with a server on this machine, the window is
+  read from llama.cpp's server (its slots, or its properties when slots are
+  off) and from LM Studio 0.4 and later for a model already loaded, and from
+  vLLM's model list on any endpoint; a run measures only a server that says
+  nothing. The reader is chosen by which server answers in its own shape, never
+  by the address. A declared window meets the same 8,192-token floor as a
+  measured one, and the run says which server gave it.
+- **A server's refusal that names its window sizes the run.** llama.cpp's server
+  and vLLM refuse a prompt longer than their window and say how many tokens
+  they hold. Where the measurement meets that refusal (the server's own API is
+  out of reach, so nothing declared the window), the run is sized for the
+  window named, down to 8,192 tokens, where it was refused as holding a window
+  nothing could size.
+- **A run asks about a model nothing describes.** On `--provider
+  openai-compatible`, a model whose window nothing gives (the endpoint's list, the
+  models this tool recommends, a measurement on this machine, or your own
+  description), or off this machine whose largest answer nothing gives, is asked
+  about once at a terminal and the answers are saved for that endpoint; with
+  nobody to answer, the run stops before sending anything, exit 1, with the
+  `models describe` step. Before, such a run went ahead and said only `input
+  truncation: NOT CHECKED`. The note that called an unlisted local model "not
+  in the curated list" is gone.
+- **`models describe <model>`** says what a model is for the endpoint the
+  provider flags name, and every later run on that endpoint uses it: the context
+  window its server applies (`--window`, for an OpenAI-compatible endpoint), the
+  most tokens it writes in one answer (`--max-output`), and its think value on
+  Ollama's own API (`--reasoning`, or `default` to send none). On an
+  OpenAI-compatible server on this machine, `--measure` measures the window with
+  three prompts and saves it. A model this tool recommends carries these
+  already. `models` now runs and has this subcommand.
+- **236 more defaults can be changed** (the first wave of the defaults plan's
+  conversion): the gates on what ships (the classification ceilings, the
+  near-duplicate threshold, test pairing), Pass 3's bridge scoring and Pass
+  5's weights, floors and context sizes, every timeout, retry and lock wait,
+  the security limits (repository size and file count, archive ratio,
+  manifest, update and window sizes), the sampling values, the model-answer
+  and figure size limits, the coverage-ranking weights, the console's
+  heartbeat and staleness, the window's port and run limits, and the bench,
+  anchoring-check and quality-gate numbers. `--<key>` for one run on the
+  commands that read it, `concept-scanner init --<key> N` to save,
+  `init --reset <key>` to remove; `init --json` lists each with its range and
+  the commands that read it. A scanned repository's `.env.local` or data
+  directory cannot set any of them. Flags these values already had (`bench
+  --n`, `--max-tokens` and `--timeout`, `distill prepare --train` and
+  `--valid`, `distill gate --bar` and `--min-examples`, `anchoring-check
+  --timeout`, `ui --port`) keep their names and their place in `--help`, and
+  `bench` and `anchoring-check --timeout` now default to a deadline derived
+  when the run starts.
+- **Single-call bridge synthesis sends an output cap**, `--budget-bridge`
+  (`CS_BUDGET_BRIDGE`, 4096), and the bridge extract model's warm-up sends the
+  warm-up cap; both sent none.
+- **A run says when it uses a value other than the built-in one.** Before a
+  command starts, one line names each default or output budget its run reads
+  that differs from the built-in value, with the value and where it came from
+  (a flag, a value saved with `init`, or a `CS_BUDGET_*` variable). The
+  `--json` notice ends with the same sentence. A scan records the values in
+  `models.json` (1.3.0) as `settings_changed` (`key`, `value`, `built_in`,
+  `source`, and `env` for a variable): `[]` when none differed, beside
+  `settings_residual`, which says what the list cannot see.
+- **Every default can be changed, starting with how a coverage plan ranks
+  files.** `concept-scanner init --<key> N` saves a default for every command
+  that reads it; `init --reset <key>` removes one, and `init --reset all`
+  removes every saved default and output budget. A command whose run reads a
+  default takes the same flag for one run, for example
+  `scan --page-rank-damping 0.7`. The first six are `page-rank-damping`,
+  `folder-edge-weight`, `omnipresent-factor`, `page-rank-iterations`,
+  `page-rank-tolerance` and `lift-precision`; the rest follow. Each has a range,
+  held when the flag is read. Saved values go in a `"defaults"` section of
+  `~/.concept-scanner/settings.json`, and no environment variable sets them.
+- **`init --json` lists every adjustable value in one `defaults` list**, the
+  output budgets as their own area: each row gives the value in force, where it
+  came from (`built-in`, `saved`, `flag`, or a budget's `environment`), the
+  built-in value, the saved value, the range, the commands that read it and the
+  step that resets it. It replaces `output_budgets`, and `budgets_problem` is now
+  `defaults_problem`. The window's Settings screen has a Defaults card in place
+  of the budgets card, grouped by area, with a search field, Save and Use
+  built-in, and `init` prints the values you set.
+- **Every output budget can be changed, in the terminal and in the window.** An
+  output budget is the most tokens a model may write in one answer, per kind of
+  call. `concept-scanner init --budget-<name> N` saves a default for every
+  command that reads it (`0` removes it); `init --json` lists each budget's
+  value, where it came from (built in, saved, or a `CS_BUDGET_*` variable) and
+  the commands that read it, and `init` prints the ones not at their built-in
+  value. The window's Settings screen shows the same list and saves through
+  `init`. For one run, `--budget-<name> N` is on each command whose run reads
+  that budget (`help --json` lists them); `synthesize --budget-pass5` and
+  `anchoring-check --budget-discovery` are new. A value outside 0 to 262,144 is
+  refused.
+- **`--local-only`** on every command that calls a model (`scan`, `bridges`,
+  `triage`, `synthesize`, `figure draw`, `anchoring-check`, `bench`, `distill
+  gate`, and `tiers run`, which passes it to every arm): it refuses before any request, exit 1, unless the model server is
+  `localhost` or a loopback address, judged from the `--ollama-host` or
+  `--base-url` host and never from the provider, so a server on another
+  machine, a LAN address included, is sent nothing. It is never saved and no
+  environment variable or `.env.local` sets it, so give it on every run.
+  It also asks a local Ollama, before the first request, whether it runs each
+  model on this machine (Ollama's `remote_host`, as for a cloud model after
+  `ollama signin`), and refuses one it forwards elsewhere, naming the model,
+  its flag and the host; if a server says so only in an answer, the run stops
+  after that one request, exits 1, and says the prompt left the machine. An
+  OpenAI-compatible server on this machine that is not Ollama cannot be asked,
+  and the run says so. Refused, it offers this machine's server as a runnable
+  next step.
+- **A `--base-url` whose query string carries a key-like parameter is
+  refused** (`key`, `api_key`, `access_token`, `sig`, `code` and similar),
+  before anything is sent or saved, exit 1, naming the parameter and never its
+  value, whether it was given on the command line, to `init`, or saved by an
+  older version. Give the key in the environment or with `init --with-key`.
+  Parameters such as Azure's `api-version` are kept. Printed next steps and
+  `init --json` never repeat such a parameter.
+- **Every scan records the settings that chose its files** (`--only`,
+  `--exclude`, its drops and the rest of what decides the universe) in
+  `file-set.json` beside it, which `synthesize` applies.
+- **A suggested next step that calls a model carries how you ran**: the
+  `--provider`, `--base-url`, `--ollama-host`, `--local-only`, `--thorough`
+  and model flags you gave on the command line, only those its command has,
+  never one it already sets, and never a user or password written into a
+  server address. A saved provider needs none and gets none. "Or use the
+  local default provider" now types `--provider ollama`, since leaving it out
+  ran a saved remote provider.
+- **A scan run with `--parallel-batches 1` reuses discovery answers.** Each
+  discovery request's answer is kept in your user cache folder, and a later
+  scan sending an identical request (same files and contents, same model and
+  server version, same settings) reuses it instead of asking again, so a
+  re-scan after a small edit asks only for what changed. Every scan prints a
+  `Discovery cache:` line with what it reused and saved, and checks one reused
+  answer by asking again (a local server only); `--verify-cache` checks every
+  one and exits 1 if any differs, or if the cache was off and it checked
+  nothing, and says which on stderr. A check that finds a difference stops reuse for the rest of the
+  scan. Scans running batches at once (the default, 4) reuse nothing, and say
+  so in their notice; two-phase, `--multi-model`, `--record-examples` and
+  `tiers run` arms never reuse, and `CS_DISCOVERY_CACHE_OFF` turns it off.
+  The key holds only what decides a discovery answer (the request text, the
+  model's identity, the server's version, the options and the output schema),
+  so editing Pass 2's criteria or an unused criteria string does not invalidate
+  it; a cache from an earlier development build misses once
+  (`discovery-cache/3`).
+- **A `--multi-model` scan says which concepts both models found.** Until now
+  only the primary model wrote concepts, from the files both models had read.
+  Now each model writes its own, and one more call groups the two lists by
+  mechanism; no concept from either model is dropped. `agreement.json`, beside
+  the scan, says which shipped concepts both models named, which they described
+  differently, and which only one of them named, and the scan prints a
+  `Model agreement:` line. If one model's step fails the scan keeps the other's
+  concepts and says so. This costs one more synthesis call and one merge call
+  per scan. The same file also says, for each file, how the two models'
+  readings of it compared and whether it reached the concepts (`per_file`),
+  which model server each step sent your code to and whether that server is
+  this machine (`data_flow`), and every step that degraded and why
+  (`warnings`), and how many tokens each model's synthesis call and the merge
+  call used (`at_merge`, `agreement.json` 1.2.0).
+- **A remote scan shows its estimated cost in US dollars before it spends**: on
+  the setup screens, in `scan --dry-run` (and its `--json`, per ring:
+  `discovery_usd`, `whole_low_usd`, `whole_high_usd`, `prices_as_of`,
+  `prices_stale`, `money_basis`, `whole_money_basis`, `ceiling_warnings`), and
+  in a line before the first model call. It is priced from the same forecast as
+  the time estimate at the model shortlist's dated prices, says when it cannot
+  be estimated and why, and the run records what it actually cost in
+  `arc.json` (now 1.5.0; saved plans 1.2.0).
+- **Opt-in spend ceilings for remote runs**: `BUDGET_PER_OP` (one run),
+  `BUDGET_DAILY` and `BUDGET_MONTHLY`, in US dollars, set in the real
+  environment. With one set, a run warns at 80% and, at the ceiling, sends no
+  further model call and exits 1 saying which ceiling and what to change; an
+  estimate that already reaches it is warned about before the scan starts.
+  Unset or 0 means no ceiling. The old defaults of 10, 50 and 500 dollars,
+  which nothing ever enforced, are removed; an unreadable value now stops the
+  command, and `.env.local` may no longer set them.
+- **`--keep-dir <name or path>`** (scan, triage) reads a folder the scan would
+  skip by name as generated output or a cache, and every run now says which
+  such folders it skipped and how many files each held. This tool's own data
+  folder is never read, matched by its path.
+- **A scan says why semantic batching (Avenue B) was skipped**, on its Avenue B
+  line rather than only in a debug log: mixed project files, no project file or
+  readable document, several languages below the root, a language this build
+  cannot encode (named, with its file count), or a failed or empty encode.
+- **`anchoring-check` compares three requests**: one carrying no discovery
+  criteria, the one a scan sends, and one naming fixed categories. It reports
+  NOT COVERED when naming categories does not change the model's answer (so the
+  check cannot say anything about the prompt), and lists the words the criteria
+  put into the answer. It asks with the discovery budget a scan uses.
+- **Cloud prices older than 90 days are marked stale** wherever a price is
+  shown, and `models --json` carries `cloud_pricing_stale`.
+- **The intent search reads more project descriptions**: `composer.json`,
+  `setup.cfg`'s metadata, `pom.xml`, R's `DESCRIPTION`, Poetry's table and a
+  Cargo workspace's table.
+- **A model answer cut off at its output limit that repeats itself (a loop, or a
+  template with only a counter changing) is no longer sent again with a larger
+  output budget**, which only bought more of the same: the call ends with the
+  cut-off answer, and the warning, the cost log and the run's closing note say
+  why. Answers that do not repeat are escalated as before. The new setting
+  `repeating-cut-escalations` (default 0) sets how many times a repeating cut is
+  still escalated: `--repeating-cut-escalations N`, or
+  `concept-scanner init --repeating-cut-escalations N`; 64 restores the previous
+  behaviour.
+- **`scan --dry-run` keeps a repository's newest 20 plans and removes older
+  ones, saying which when it does.** A plan a stopped run's record names is
+  kept. Each dry run's plan is now named `dry-run-<id>.json`. The number is
+  adjustable with `--dry-run-plans-kept`, `init --dry-run-plans-kept N`, or the
+  window's Settings.
+
+### Changed
+
+- **A concept that characterization did not answer for says nothing of its
+  technical approach or comparable techniques**: `technical_approach` and
+  `comparable_techniques` are `null` on it, where they were `""` and `[]`. This
+  applies to a documentation concept a scan did not characterize, and to a
+  concept whose characterization failed or whose source could not be read. A
+  characterized concept is unchanged: it always carries a `technical_approach`,
+  and `[]` still says it named no comparable technique.
+- **A concept classified as a standard technique (`textbook`) is held back only
+  when characterization also scores it below the distinctiveness floor**; one
+  scored at or above the floor now ships, with its classification. Every concept
+  is characterized first, so a scan makes one more characterization call for
+  each concept classified textbook. `textbook_held` counts concepts held back as
+  textbook and `low_score_held` the other concepts below the floor, with no
+  concept counted in both; each refusal row of either kind names the concept's
+  classification and score.
+- **Python concepts are paired with their tests** (`tests.json` 2.4.0): beside
+  the module, and anywhere in the repository a test imports it. TypeScript and
+  JavaScript are still not paired.
+- **A scan of a subfolder pairs tests that live outside it, and `--tests
+  evidence` reads them too.**
+- **Under `--two-phase`, a batch made only of documentation is distilled
+  through a frame written for documents.**
+- **A missing or extra argument is refused by name, with a command to run.**
+  `submit` given only a scan id says `<concept-or-bridge-id> is required: submit
+  takes <scan-id> <concept-or-bridge-id>` and offers the command with the
+  missing argument to fill in; an argument too many is named, with the command
+  without it. It said `accepts 2 arg(s), received 1`, with no command to run.
+  `scan` without a repository also offers `--resume`.
+- **The window's form refuses a missing argument in the command's own words**,
+  where it said "Fill in", and needs `scan`'s repository unless `--resume` is
+  given.
+- **`bridges` and `triage` on a stored scan with no concepts offer a scan to
+  produce some and the list of stored scans**, as `synthesize` does.
+- **`help`'s usage line reads `help [command]...`.**
+- **The window shows every next step a command gives, as a terminal prints
+  it**: its priority, what to do, the command and why. A step the window can
+  follow is a button, and a step that points at a command's help opens that
+  command's form.
+- **Every screen of the window shows its command's notice and next steps**, so
+  a failed or stale last run, a refused correction and a model server that is
+  not running are said there, with what to do.
+- **The window checks a command's flag rules before running it in the
+  command's own words**, required options included, and marks a required
+  option.
+- **Reviewing a lineage in the window shows what review tells a reviewer in a
+  terminal**: stale, retired, moved and also-found concepts, and the lineage's
+  summary.
+- **A running command in the window shows the status line a terminal shows**:
+  stage, timer, time left, tokens, cost and warnings.
+- **The window's models card follows the provider the scan form names**, and
+  shows no local models for a scan that runs on a remote provider.
+- **"Use it" on a project's saved setup fills the scan form with the command
+  that runs that setup**, its picks and coverage included.
+- **`triage --workspace`, `synthesize --workspace`, and `distill gate
+  --candidate` and `--judge` are required flags**, refused before anything runs.
+- **Every rule between flags is checked for every command before it runs**,
+  and is refused in the words `help --json` lists for it. A switch given false
+  counts as not given, in the command and in the window's form alike, so `scan
+  --depth 2 --multi-model=false`, `scan --docs-only=false --exclude-docs`,
+  `status --running --wait=false` and `ui --serve=false --stop` are accepted.
+- **`--multi-model=false` and `--thorough=false` win over a saved profile for
+  one run**, as every other flag does: `scan` and `models` given
+  `--multi-model=false` beside a saved multi-model profile run single-model on
+  that profile's primary model, and `--thorough=false` beside the saved
+  Thorough profile runs the default primary model, in `scan`, `models`,
+  `bridges`, `triage`, `synthesize` and `figure draw`. The saved profile is
+  unchanged, and the line naming it says what the switch turned off. A scan
+  refused for `--depth` under a saved multi-model profile now offers
+  `--multi-model=false` for that run, beside saving another profile. The same
+  holds for a profile picked at the first-run picker, which is saved as picked,
+  and with no profile saved the setup screens' models screen and `models
+  --json` open on the recommended profile with `--multi-model=false` applied;
+  choosing two models on the screen still runs them.
+- **The "Using saved profile" line says when `--thorough` or a lone
+  `--secondary-model` replaced one of the profile's models for the run**,
+  after the first-run picker too.
+- **`status` prints the running command's status line** in place of its separate
+  stage, model call and time-left lines.
+- **A next step that points at a file** (a run's log, an exported draft, a saved
+  plan, a scan's disclosures) **names the file and runs no command**, so it works
+  on Windows, where `tail`, `cat` and `ls` do not exist.
+- **Every response's next steps number two to five, in priority order**, under
+  `--json` and at a terminal; `models describe` offers a scan with the model it
+  described, and `ui` prints its next steps at a terminal.
+- **Help for `--draft-model`, `--thorough` and `--primary-model` says what each
+  does on its command**, including that `--thorough` changes nothing on a remote
+  provider; every `--json` has the same help.
+- **A `--synthesize` scan's `duration_ms` includes Pass 5**, as its cost does:
+  the run's wall time, measured after Pass 5. A standalone `synthesize` is its
+  own run, and `synthesis_cost.duration_ms` gives its time.
+- **`scan --resume` compares the choices a run used, never how its flags were
+  spelled**: the files the scan collected, each by its content; whether Pass 3
+  runs; each role's model and the weights its tag pointed at; every value or
+  output budget that differs from its built-in one; and a remote endpoint's
+  address without its user and password. The same choices given another way
+  compare equal. `unfinished.json` is 3.3.0: its shape is unchanged and its
+  settings and arguments mean something else, so a 3.2.0 record is refused as
+  another version's; run that scan again. A stopped run's record in a data
+  directory inside a git work tree is read only when your home folder holds its
+  digest, and the record keeps no user or password from a repository's URL.
+- **No stage sends a call again that cannot succeed.** A call that timed out
+  is sent at most twice in all, by the client, and no stage sends it again
+  (characterization's retries could send one up to eight times, the
+  multi-model synthesizer up to six); a cut answer and a permanent failure
+  are never sent again. Characterization still asks once more for an answer
+  it could not decode.
+- **A remote request the endpoint rejects is not sent again**: a 4xx answer
+  other than 429 (a rejected key, a bad request, payment required, a model the
+  endpoint does not serve) fails at once, where every stage sent it again. A
+  rate limit (429) and a server error (5xx) are still retried.
+- **Ollama's client sends no request without a per-request timeout**, and
+  every command gives it the same one (`--timeout`, saved as
+  `default-ollama-timeout`). `anchoring-check`, `bench` and `distill gate`
+  sent each request with their whole run's deadline; they now send it with the
+  per-request timeout as saved or built in, and their `--timeout` is still the
+  whole run's deadline. `distill gate`'s run deadline can be saved with
+  `init`; 0, built in, sets none.
+- **`bench --n N` sends all N requests at once**; it ran at most 4 at once on
+  Ollama and 16 remotely, which read as a server that queues.
+- **Whether a run costs money is one rule everywhere**: Ollama, wherever it
+  runs, and an OpenAI-compatible server on this machine are not billed per
+  token, and a hosted endpoint is. The cost line says "Ollama, not billed per
+  token" or "an OpenAI-compatible server on this machine, not billed per
+  token", the start of a scan on an Ollama server on another machine says so
+  (without any user or password in its address), and `--bridges`' help states
+  the rule.
+- **A scan's cost includes Pass 5 whichever command ran it**: `synthesize`
+  adds its run's Pass 5 spend to the stored scan's cost, as `scan
+  --synthesize` does. `pbd_cost` and `review_cost` do not include it.
+- **The first-run picker opens the parallel-batches question on the rule a
+  scan follows** (one at a time against a server on this machine, 4
+  remotely), with the memory figure as advice beside it, and saves a number
+  only when you change it; the number you pick applies to the scan you are
+  starting, unless `--parallel-batches` was given, not only to later ones.
+- **`scan`'s usage line marks its repository optional** (`scan
+  [repo-url-or-path]`), since `--resume` can take it from the stopped run.
+
+- **Next steps belong to the command that ran.** A response is padded with
+  general steps only when it has fewer than two of its own, and those are the
+  running command's: its own options, and the provider options only where it
+  calls a model. Only `scan` is offered `--verbose`, and a network failure in
+  a command that calls no model is no longer told to start Ollama.
+- **`review --why` and `refusals` say which gate held a concept back and why,
+  in plain words**, with each setting it read by its key, its built-in and
+  saved values and the flags that change it; `refusals --json` adds
+  `verdicts`.
+- **`init` repairs a saved default it cannot read**: `init --reset <key>` or a
+  new value replaces it, `init --reset all` removes a defaults section that is
+  not an object, and a refusal beside a damaged section offers those, never a
+  scan's steps.
+- **`--depth`'s range is 0 to the depth ceiling in force**, listed in the
+  command's help and held when the scan starts. Any value refused for its
+  range now names the flag it was given with.
+- **`--include-textbook`'s help, and the setup screen's choice, say it also
+  lifts the score floor.**
+- **`price-snapshot-max-age-days` is offered on the commands that read it**,
+  12 rather than 24.
+- **`--parallel-batches` sends one request at a time against a server on this
+  machine** by default, and 4 against a remote endpoint; a value given or
+  saved still wins. Since the discovery cache serves serial scans, a local
+  scan now reuses discovery answers by default.
+- **Pass 2 sends a failed call again only when a second send can succeed**: a
+  transient error is re-sent, an unusable answer is asked for once more, a
+  timeout is sent at most twice end to end (`timeout-attempts`), and a cut
+  answer or a permanent error is not re-sent.
+- **Pass 5 judges every concept it is given and scores every candidate
+  pattern**: a partial answer is kept and the concepts it left out are asked
+  again, and the run says `judged N of M mechanisms for product centrality`.
+  A failure every attempt would repeat, such as a stopped run, is not split
+  and asked again.
+- **Triage runs before characterization**, so a concept only triage can
+  locate is characterized. A location field listing several files resolves to
+  the first that exists, a concept found in documentation is located at the
+  document its call read, and a concept's source type follows its corrected
+  location. A concept that names no file and matches nothing stays pending
+  rather than being dropped.
+- **A file larger than one discovery call and under the read cap is read in
+  parts**, one call each, instead of being skipped.
+- **A concept the lineage followed through a rename is exported and listed at
+  the path the file has now**, and a scan whose `--parent` coverage record
+  cannot be trusted reads every file and says so, in its caveat, its coverage
+  and its status line, instead of being refused.
+- **Pass 4's matching is fitted to the model's window** in chunks, each
+  answer checked against its own chunk.
+- **The OpenAI-compatible path sends characterization's schema**, a server on
+  this machine included (`CS_REMOTE_JSON_SCHEMA=0` turns it off); Ollama's own
+  API is still sent none. An undecodable characterization answer is re-sent
+  only when inference leaves this machine.
+- **Every profile's memory figure is rounded up to the next whole GB**:
+  Balanced needs ~23 GB, Validated ~39 GB and Thorough ~52 GB (its model alone
+  is 51.7 GB), as do the estimates the picker prints for a server's slots. A
+  32 GB machine is therefore recommended Fast, where it was Balanced;
+  Balanced stays choosable.
+- **`models` checks every model a profile's scans call**, the profile this
+  machine's memory recommends is marked, and the Fast profile's memory figure
+  counts its grader (17 GB).
+- **`components.json` 1.2.0** names a concept characterization was never asked
+  about, because its location did not resolve to a readable file
+  (`not_asked`), apart from one that was asked and never answered.
+- **`CS_BUDGET_DEFAULT` and a saved `budgets.default` are no longer read**:
+  no model call ever read that budget, and a call with no options is refused
+  before anything is sent.
+- **The output contract is 2.0.0** (the concept, the bridge and the scan
+  result). A consumer that reads 1.x must update:
+  - every scoring axis on a concept, a bridge and a pattern is null when it was
+    not scored, and a 0 is a score; `axes_unanswered` and `scores_defaulted`
+    are gone;
+  - discovery's estimate moved to `provenance.discovery_score`, and
+    `technical_distinctiveness` is characterization's score alone;
+  - a characterized concept carries every field it requires (a category from
+    its list, the technical approach, the key insight, the inputs and outputs,
+    the components and how they interact), or it is held back as
+    `required_field_missing`;
+  - each shipped concept carries `name_attenuation`, and each one that has
+    `contributors` carries `authorship_caveat`;
+  - patterns gain `asserts_feedback_cycle`, and no pattern has one member;
+  - the scan result's `duration` is `duration_ms`, Pass 5's too; costs are null
+    when a remote call had neither a listed price nor a cost its endpoint
+    reported; `repository` names the repository
+    by its origin URL or its folder name, never a local path; and the result
+    gains `coverage`, `directories_skipped` and `doc_concepts_characterized`.
+
+  Scans stored by an earlier version are read but not written to; scan again.
+- **A `--multi-model` context that does not fit keeps every file**, written in
+  a shorter form, instead of dropping files; a file is left out only when every
+  file's shortest summary still does not fit, and a lossy form is named in
+  `agreement.json`'s warnings. Compression is reported as a stage of its own,
+  and a compression call's output budget is no longer raised past the size its
+  answer is judged against.
+- **Multi-model files are extracted again once after upgrading.** The
+  extraction cache keys on the extraction prompt and its request settings
+  rather than a hand-kept version, keeps the model's own answer and reads it
+  again on every hit, and removes the folders an older prompt wrote.
+- **`--tests source` masks test data in discovery too**, not only in
+  characterization, and a concept whose name or summary copies a test's data,
+  or the placeholder that masked it, is held back (`copied_test_data`).
+- **`review` and `figure` no longer take `--source-weight-*`**: they read the
+  source weight each stored concept carries.
+- **A 0 on `--timeout`, `--parallel-batches`, the bridge maxima or the triage
+  limits is refused**, naming the range; leave the flag out for the saved
+  value, else the built-in one. `--depth` takes 0 to 64 and is refused above
+  the depth ceiling in force (4 built in). `init` offers no flag that changes
+  only its own run, and `init --default-parallel-batches` saves where the model
+  picker and `bench --write-config` do. Discovery's pre-warms send the warm-up
+  budget (`--budget-warmup`, 512) rather than 8192. Multi-model extraction
+  cache entries made before this change are not reused. `CS_REMOTE_CONTEXT_CAP`
+  is read when a model is sized: a flag outranks it, and it outranks a saved
+  value.
+- **An Ollama server on this machine given as `--provider openai-compatible
+  --base-url .../v1` runs on Ollama's own API**, which sets the context window
+  on every call; its OpenAI-compatible API cannot, so the server's own window
+  applied (4k tokens on a machine with under 24 GiB of GPU memory) and prompts
+  were cut. It is the same server and the same loaded model, and the run says so
+  in one line. A server is moved only when it reports a version and answers
+  Ollama's model list in Ollama's shape; anything else keeps the API it was
+  given.
+- **No answer is asked of a model beyond the most it writes.** A remote
+  catalog's listing says how many tokens a model writes in one answer (OpenRouter
+  reports it), and the first budget sent to the model and every retry after a cut
+  answer are now held to it; a larger request was refused by an endpoint that
+  checks it, or cut there. Every recommended cloud model carries its limit, so a
+  command that reads no listing holds to it too.
+- **What you say about a model is saved per endpoint, and `think` moved into
+  it.** The settings file's `"models"` section holds, for each endpoint and
+  model, the context window its server applies, the most tokens it writes in one
+  answer, and its think value; every command applies the records for the
+  endpoint it runs on once its provider is resolved. The old `"think"` section is
+  read as the records of the Ollama server at `localhost:11434` and moved there
+  on the first save; for a server elsewhere, give the value for that server.
+  `init --json` shows the records under `models` in place of `think`.
+- **A local model is sized to the memory that holds it.** Before the first call,
+  a run on Ollama's own API prices each model at its window across the server's
+  slots (weights, context and the runner's prompt cache) and, when that is more
+  than this machine's memory less a 20% reserve, sizes the model for the
+  largest window that fits, down to 8,192 tokens, and says so; below that it
+  refuses, naming the server's slot setting. A model that ran partly on the CPU
+  anyway is said when the scan ends, and so is one loaded more than once under
+  it (`models.json` 1.5.0 records both).
+- **The model picker prices a profile's memory from its own models.** A request
+  slot at the 32k window a scan sends costs 3.0 GiB for `qwen3-coder:30b`, 1.75
+  GiB for `qwen2.5-coder:7b` and 0.8 GiB for `gpt-oss:20b`, where it was 2 GB for
+  every model, and each model's 8 GiB prompt cache is now counted. So the
+  recommended number of requests at once changes: on 48 GiB, Balanced recommends
+  3 (it was 8), and Thorough recommends 1, since the server runs its model one
+  request at a time. `figure draw`'s load plan prices a model the same way, from
+  the server's own log when the model has run there, and says NOT COVERED where
+  nothing can price it, rather than its size on disk times 1.25.
+- **The context window an OpenAI-compatible server on this machine applies is
+  measured before a run sends anything** (three prompts per model, also for
+  a model first used mid-run), and every stage is sized for it. Below 8,192
+  tokens the run is refused, naming the server's setting and, for Ollama, its
+  own API. `models.json` records each measurement.
+- **`--log-requests` is removed**, with the `CONCEPT_SCANNER_LOG_REQUESTS`
+  variable that also turned it on. It logged one line per model call to stderr;
+  every call is now in the run's own `calls.jsonl` (under `runs/<run-id>/` in
+  the data directory), failed calls included, with what each one asked for
+  (`num_ctx`, `num_predict`) beside what the server answered, the input check's
+  mark, and a failure's kind. A command given `--log-requests` now refuses it
+  as an unknown flag.
+- **A discovery call holds about a fifth more source**: 67,578 characters of
+  files at the default 32K window, where it held 55,296. The batch is sized by
+  the same rule as every other prompt (the window less the output budget, the
+  system prompt, the prompt's fixed text and a margin), and so it now follows
+  `--budget-discovery`. A file between the two sizes, which was left out of a
+  scan's own discovery before, is read; a large repository is read in a few
+  fewer calls.
+- **`models.json` (1.2.0) records each model's context window for every
+  provider**: the window the run asked for, the window that applied and where
+  that came from, and every window it learned; each Ollama runner also records
+  its window per slot and the prompt cache it keeps.
+
+- **The multi-model per-file extraction budget (`pbd-extract`) starts at 8,192
+  output tokens**, up from 4,096. On one corpus `gpt-oss:20b` overran 4,096 on
+  10 of 12 files in both 2026-10-08 scans, and each overrun was thrown away and
+  asked again, about 22 minutes of each scan. Re-run at 8,192 on the same
+  corpus, none of its twelve extraction calls was thrown away, and the stage
+  generated 41% fewer tokens.
+- **`--budget-<name>` flags are offered only on the commands whose runs read
+  that budget**, and default to `0` (not given) rather than the built-in value.
+  A flag a command offered and never read (for example
+  `triage --budget-figure`) is now refused as unknown, and `--budget-default`
+  is gone, since no command's call ever read it.
+- **A saved budget of 0 or less is ignored**, as a variable or flag of 0
+  already was, and a saved `budgets` section holding a value that is not a
+  whole number changes nothing (before, the keys ahead of the bad one applied).
+- **The judge prompt (`bench`, the promotion gate) no longer asks for exactly
+  one token while also letting the model think first**; it says the answer is
+  one of A, B or TIE. Measured: every reply stayed readable, and calibration's
+  verdicts on the two judges tried did not change.
+- **The bridge and Pass 5 rubrics keep only their two ends for centrality and
+  defensibility**, with no interior anchors (0.7, 0.4, 0.5). The 0.7 anchor was
+  deciding Pass 5's gate: measured, 15 of 16 load-bearing concepts scored
+  exactly 0.7, the single-mechanism floor. Pass 5's load-bearing centralities
+  are therefore not comparable with earlier scans.
+- **A split Avenue B batch's prompt says it holds part of a larger group**:
+  the grouping hypothesis was written for every file of the group, so a part
+  now says which files it holds instead of presenting the hypothesis as
+  describing only its own. An unsplit batch's prompt is unchanged.
+- **`--merge-model` on a single-model scan is refused** (exit 1, saying
+  that only a multi-model scan has a merge model), read from the resolved
+  mode, so a saved multi-model profile still accepts it; `--depth` under a
+  saved multi-model profile is refused the same way instead of being ignored.
+- **Re-run steps repeat the flags of the run they repeat**: "try a different
+  model" names the repository and its flags instead of `<path>`; the
+  re-query step is now offered (it never was, because it was built before
+  the union that sets it) with `--depth 1`; the dry run's widening step, the
+  `bridges` and `synthesize` re-runs carry their flags; a widening's re-run
+  repeats the widening (the same `--parent` and `--coverage`, and every other
+  flag given) instead of a command the scan refuses, with the whole-repository
+  re-run offered as a second, lower step; "Re-run with --verbose" is the scan
+  just run, from its own path and flags; and the `bridges` "loosen" step
+  raises the candidate cap instead of lowering it to 30.
+- **Under `--local-only`, a model server that did not answer is followed by
+  steps on this machine**, naming the host, instead of a remote provider.
+- **`bridges` names the model its calls went to** (the drafting model) on its
+  `Model:` line and in the audit's `bridge_model`.
+- **`synthesize` reads the workspace with the stored scan's file set**
+  (`--only`, `--exclude` and its drops), from the `file-set.json` every scan
+  now writes, or from an older coverage scan's `arc.json`, and says which; a
+  scan written before 2026-10-09 that planned no coverage recorded none, and
+  `synthesize` says that every document is read. A record in a data directory
+  inside the repository is used only when this machine's home folder holds its
+  digest: otherwise `synthesize` refuses before any model call and says how to
+  scan again.
+- **The envelope writes `pbd_tokens` and `review_tokens`** (`ScanResult`
+  1.5.0): what discovery and Pass 2 used, as `{"input", "output",
+  "cache_hit"}`, read from the cost log; absent when the run made no such
+  call. Both fields were declared and never written. `pbd_cost` and
+  `review_cost` are now computed and stay 0 until a cost-log row carries a
+  price; the completion audit carries the same values.
+- **`agreement.json` 1.3.0 counts the generations the output-cap escalation
+  discarded**: each of `at_merge`'s merge call and two syntheses gains
+  `discarded_generations` and its discarded tokens, so the parts sum to the
+  cost log, abandoned rows included.
+- **A scan says which stage and model its discarded generations came from**,
+  in a line after the discarded-generations note, and the cost log's
+  discarded and failed escalation rows carry a `stage`.
+- **`models.json` records the server's runner settings when `HOME` is moved**
+  (as a measured run does): the server's log is found under the home the
+  account database gives this user.
+- **A build from source uses Go 1.27.2** (`toolchain go1.27.2`, as CI and
+  releases already did), and `golang.org/x/tools` moves to v0.51.0, which reads
+  the export data that Go 1.27.2 writes. License analysis is unchanged: it
+  never read export data, and its output is byte-identical across the bump.
+- **On a remote endpoint, the default primary model and the default Pass 2
+  grader are chosen for that endpoint's catalog**, from the model registry, as
+  the drafting model's is. Both defaults exist on OpenRouter's catalog today.
+  On a catalog the registry lists no default for, `scan`, `bridges`, `triage`,
+  `synthesize`, `figure draw`, `bench` and `anchoring-check` stop before any
+  model call and ask for `--primary-model` (or a model saved with `init
+  --model`) and `--secondary-model`, and exit 1, where they used to send every
+  call for a model that catalog does not have. The pre-flight check covers both
+  defaults.
+- **A folder named `data` is read**, and a folder named `build`, `dist` or
+  `coverage` is skipped as generated output only when git ignores it or tracks
+  nothing in it, so a `dist/` you commit is read. Where git cannot answer (the
+  folder is not in a git checkout, or git is not installed) those names are
+  skipped as before. The run says which rule skipped each folder, and names
+  the folders it read because git tracks them.
+- **On a remote endpoint, the drafting model's default is chosen for that
+  endpoint's catalog**, from the model registry, and falls back to your primary
+  on a catalog the registry does not list; the scan prints which model drafts
+  and why, and the pre-flight check now covers the drafting model.
+- **`--min-doc-relevance 0` and `--enrich-threshold 0` are honoured.** A value
+  of 0 was read as "not set" and replaced with the default.
+- **Pass 5 reads the project's own description**, found by the same rules as
+  the intent search, and no longer takes `CLAUDE.md`, `AGENTS.md` or
+  `CONTRIBUTING.md` for one; every document it reads is bounded.
+- **Several answer fields have limits** that hold after the model answers: the
+  TLDR, the enriched summary, two characterization reasoning fields, the three
+  fields of each distinctiveness mechanism, and the test-evidence statement with
+  a rejected property's quote and name. They hold on a remote provider too,
+  where the output schema is not enforced. A cut is counted, never silent.
+- **`--depth` above 4 is refused** (`--depth 9 is outside its range: give a
+  value from 0 to 4`, exit 1) instead of being cut down to 4, and the catalog
+  lists 0 to 4, where 0 means work it out from the file sizes.
+- **Any loopback address counts as this machine**: a `--base-url` on
+  `127.0.0.2` or another address in `127.0.0.0/8`, or an IPv4-mapped loopback
+  address, now gets the local defaults and no egress notice, as `127.0.0.1` and
+  `::1` did. `agreement.json`'s `data_flow` now calls `0.0.0.0` another
+  machine, since a request to it can go through a configured proxy.
+- **`--min-doc-relevance` and `--enrich-threshold` refuse a value outside 0 to
+  1** (for example `--min-doc-relevance 2 is outside its range: give a value
+  from 0 to 1`, exit 1). `help --json` lists the range, and the window's form
+  takes it from there.
+- **A repository holding a `.zip` that would expand more than 100 times its
+  size is no longer refused**, on a local path or a remote clone. This program
+  opens no archive, so the scan goes on and names the archive in a note line
+  and in its `--json` notice; `bridges --workspace` and `triage --workspace`
+  say the same.
+- **A local Ollama tag on a loopback `--base-url` is no longer refused** before
+  the endpoint is asked; its own model listing decides.
+- **`scan --synthesize` honours `--only`**: a README, project description, or
+  architecture or decision document outside `--only` is no longer read or sent
+  to Pass 5's model, local or remote, and the run prints one note naming what
+  it left out.
+- **The intent search (`--intent-from-docs` and the setup screens) honours
+  `--only`**: a README, root page, package description or documentation page
+  outside `--only` is not read or sent to the intent call, and the run prints
+  one note naming what it left out. With no document inside `--only`,
+  `--intent-from-docs` makes no intent call (a partial `--coverage` is then
+  refused) and the first screen says `--only` left the documents out. The Go
+  package comment is
+  chosen among the root files `--exclude` and `--only` keep, so an excluded
+  root Go file no longer stops another one's comment from being read.
+- **A remote scan is no longer refused for an `--extract-model` or
+  `CS_EXTRACT_MODEL` it will not call**: the extraction model is checked only
+  under `--two-phase`, where a grader doing the extracting is checked in that
+  role too.
+- **An unlisted `--merge-model` on a remote multi-model scan is refused by the
+  pre-flight** (exit 3, naming the flag) instead of failing at merge time.
+- **`bridges`, `triage` and `synthesize` with `--draft-model` no longer pull
+  the primary model** (or, under `--no-auto-pull`, require it): they never
+  call it.
+- **`distill gate` checks `--judge` against a remote endpoint's catalog**
+  before any request; an unlisted judge stops with exit 3.
+- **`intent.json` 1.2.0 records the documents `--only` left out**
+  (`documents_left_out_by_only`), from `--intent-from-docs`, even when no
+  intent call was made, and from the setup screens.
+- **`--multi-model`: a file one model refused and the other's call failed
+  says what happened to each** in `agreement.json`'s `not_extracted` cause
+  (1.2.1, no field changed), where it said "both models' extraction failed",
+  and the run's extraction error reads "neither model extracted the file:
+  primary: ...; secondary: ...".
+- **A saved extract model (`extract_model` in `settings.json`) is used on a
+  local provider only.** A remote scan or `bridges --two-phase` run no longer
+  uses it, and is no longer refused for it; `--extract-model` and
+  `CS_EXTRACT_MODEL` still apply everywhere.
+- **`bench` and `anchoring-check` check their model against a remote
+  endpoint's catalog** before the first request; a model the catalog lacks
+  fails once, naming `--primary-model` (exit 3).
+- **`bridges`, `triage`, `synthesize` and `figure draw` check a remote catalog
+  before their first call**, for the models each one calls, and refuse once
+  naming the flag to change (exit 3). On a catalog the model registry has no
+  defaults for, they no longer ask for `--secondary-model`, a flag none of them
+  has; `bridges --two-phase` there asks for `--extract-model` (exit 1). The
+  model check names only the flags of the models that failed, `scan` included.
+- **A `--multi-model` scan in which every file was refused before any model
+  call exits 1**, saying so, instead of 3: no model server was asked anything.
+- **`--timeout` and `--parallel-batches` help states what the code applies**:
+  `--timeout` says that under `--two-phase` a smaller value is raised to 30
+  minutes except for `--multi-model`'s own calls, and `--parallel-batches`
+  says 0 means the saved setting, else 4.
+- **The "Estimated runtime" line is the console's own estimate**, the same
+  figure as the live stage ETA, priced from this machine's recorded calls, and
+  says when it does not know yet.
+- **Model flags' help states the defaults the code uses**, and `--base-url` and
+  `init --profile` help no longer show a wrong value name.
+- **Triage no longer drops a concept as a missing file when only its keywords
+  failed to match**: a file with the name the concept cited is always a
+  candidate, a concept with nothing to search with stays pending, and keywords
+  are read in any script.
+- **Two concepts in one file whose names differ only after their fortieth
+  character, or whose names are not in Latin script, are no longer merged** by
+  the final de-duplication.
+- **Java, Kotlin, Swift and C# test files are recognised by their `Test`
+  suffix or prefix**, so `Latest.java` and `Contest.kt` are product code again.
+- **A path missing its leading folder is repaired for any layout**, not one
+  application layout: the one readable file whose path ends with it.
+- **The documents line says why documentation was left out** (code was most of
+  the files, or `--exclude-docs`).
+- **`--multi-model`: a failed per-file merge call keeps the primary model's
+  extraction** (reported as `merge_failed` with its cause in `agreement.json`,
+  now 1.1.1) instead of dropping the file, and a cancelled scan stops at once
+  instead of continuing file by file and exiting as a model failure.
+- **`--multi-model` honours `--timeout`.** Its own model calls had a fixed
+  limit of ten minutes whatever `--timeout` said.
+- **A `--multi-model` answer that is not a readable merge no longer empties a
+  file.** When the step that merges two models' readings of one file got back
+  an answer it could not use, it could replace both readings with an empty
+  one; it now keeps the primary model's reading and records the file as
+  `merge_failed`.
+
+- **`--multi-model` extraction reads each input as a file, code or
+  documentation**, not as "the document", and no longer labels every input
+  with a constant source type. Its cache moves to v5, so every cached
+  multi-model extraction is redone on the next scan; a cache from before the
+  2026-10-07 prompt change had been served under the changed prompt until now.
+- **A `component_interaction` written by the completion step can be two
+  sentences**: that step asked for one sentence where characterization asked
+  for one or two.
+- **Pass 2 (classification) is no longer shown discovery's score.** Shown it,
+  the classifier wrote discovery's number back on every candidate measured;
+  the score a concept carries before characterization is now Pass 2's own,
+  so it is not comparable with earlier scans' scores at that stage. Labels
+  moved no more than edits that change nothing.
+- **Discovery's first criterion carries a colon where it had an em dash.**
+  Measured against two edits that change nothing, it moved discovery no
+  further than they did. A discovery cache written by an earlier development
+  build misses once.
+- **The test frame (`--tests source`) states what makes test machinery a
+  mechanism** (how the test itself is built, not what the code under test
+  does) instead of listing four verbs.
+- **The prompts state what they look for instead of showing examples.** The
+  discovery criteria and the classification, characterization, bridge and
+  summary prompts carried examples and sample values taken from particular
+  kinds of software, and a model tends to describe what it reads in the
+  examples' terms: on a library with no client code, characterization judged
+  how detectable 16 of 23 mechanisms were in terms of client-side code, the case
+  its example used. Each prompt now states the property it asks about, and shows
+  the shape of its answer as placeholders. A concept's parts are no longer cut
+  at six when an incomplete characterization is completed. **Scores are not
+  directly comparable with earlier versions:** on one fixed set of 23 concepts,
+  `implementation_depth` rose one step on 5 of them, `problem_specificity` on
+  3, and `technical_distinctiveness` on 1.
+- **The same scan gives its results in the same order.** Identical scans
+  shipped the same concepts in a different order every run, and when bridge
+  candidates tied on score, which combinations were explored changed between
+  runs; both now come out the same every time, as do a pattern's subsystem
+  list and the order of the patterns step's prompt.
+- **Tests are paired with concepts in Go only again.** 1.3.0 also paired
+  TypeScript, JavaScript and Python concepts with the tests their conventions
+  put beside the code, read by pattern. Measured against hand labels on one
+  real repository each, that found about one in five of the tests that
+  exercise the code (recall 0.18 and 0.19, where 0.7 was required), so those
+  concepts are counted as `unsupported_language` in `tests.json` (schema
+  2.1.0), as they were before 1.3.0, and the Tests line says how many.
+- **A scan stopped by strict validation keeps the work it had done.** When the
+  classifying model cannot classify a batch, the scan still stops with exit
+  code 3, and now writes `unfinished.json` to the run's folder first: every
+  concept classified so far, and the rest marked unclassified. The error names
+  the file. It is a record, not a scan, so nothing graded only by the model
+  that found it can be reviewed or exported. One such failure, at batch 846 of
+  868, had discarded four and a half hours of work.
+- **Bridges (Pass 3) run by default when inference stays on this machine.**
+  Pass 3 is where a scan finds how its concepts combine; without it a scan
+  reports the parts and never the arrangement. A scan whose model runs on this
+  machine, an OpenAI-compatible server on a loopback address included, now runs
+  it without `--bridges`, at a bounded cost: about 50 extra model calls in the
+  runs measured, capped by a fixed number of candidates rather than by the size
+  of the repository. A scan that sends its requests to another machine still
+  skips it unless you pass `--bridges`, so a default never spends money, and
+  `--no-bridges` turns it off anywhere. Each bridge now carries
+  `asserts_feedback_cycle` (bridge schema 1.3.0), true when the bridge's own
+  text claims a loop. It describes the text, not the code: the scanner cannot
+  check that anything closes the loop, and on a test corpus with the loop's
+  write side removed, bridges still claimed one.
+
+### Removed
+
+- **`triage --exclude`, `--keep-dir`, `--include-clients` and
+  `--include-fixtures`**: `triage` reads with the scan's own file set, as
+  `synthesize` and `bridges` do.
+- **`default-concurrency` and `default-remote-concurrency`**, with their
+  flags: `--parallel-batches` (`default-parallel-batches`) is the one control
+  for how many requests a run keeps in flight. A client no command sized sends
+  one request at a time.
+- **`native-request-timeout`**: `default-ollama-timeout` is the one
+  per-request timeout for Ollama's client.
+- A value saved under one of these three keys is ignored, and a run that
+  reads defaults says so once; `init --reset <key>` removes it. `init --reset
+  all` keeps a key this version does not know, since a newer version may have
+  saved it.
+
+### Fixed
+
+- **Quitting the window, `concept-scanner ui --stop`, or uninstalling right after
+  the window opened no longer fails with "commands this window started are still
+  running".** Commands that only read (the window's own models, settings, scan
+  list and Running screen refresh) are stopped with the window. A scan, a save, a
+  review decision or an export still keeps it open until it finishes or you stop
+  it, and the same holds for **Install and restart**.
+- **A cut-off model answer that repeats one template with only a counter
+  changing** (for example one file location with its line number climbing past
+  the file's end) is now reported as repeating, and the warning names a loop
+  rather than a larger budget as the cause. How much of the answer's end such a
+  run must cover is the new setting `repetition-counting-share` (default 0.7).
+- **A widening (`--parent`) carries a purpose that was cut when the lineage was
+  given it**, and its note says that a raised limit cannot restore stored text:
+  give the purpose again with `--intent` (a behaviour with `--behaviour`) and the
+  raised limit, on a widening or a new first scan. It used to name only a cut
+  behaviour and advise a limit flag that could not restore it. A `--changed` pass
+  records the same.
+- **The multi-model synthesis logs "running the multi-model synthesis".**
+- **A remote scan whose `CS_REMOTE_EXTRA_BODY` has no entry for a model it
+  calls is refused before its first model call**, naming each such model and
+  the option that chose it, with exit 1 and steps to add an entry or choose
+  another model. Until now each call to that model was refused one at a time:
+  with no `--draft-model` and a setting naming only the first and second models,
+  a scan shipped every concept uncharacterized and exited 0. A setting that
+  cannot be read is refused the same way; if such a refusal happens during a
+  run, the run stops, sends no further model call and exits 1; and a setting's
+  refusal now exits 1 wherever it happens (it exited 3 when it came from a model
+  call).
+- **The spend ceiling's message prints the ceiling as you set it and the spend
+  to four decimal places** ("$0.0021 counted ... against BUDGET_PER_OP=$0.002"),
+  where a ceiling under a cent read "$0.00", and says how many calls were
+  counted at the cost the endpoint reported and how many at the listed prices,
+  naming the prices' date only when a listed price was used. The warning before
+  a scan prints a ceiling the same way.
+- **A remote single-model scan's `models.json` names its provider
+  (`openai-compatible`)**; it said `ollama`.
+- **When a spend ceiling refused the batch suggestion for semantic batching, the
+  Avenue B line says the call was not sent**; it said the model named no usable
+  group of files.
+- **A scan whose discovery saw less than it collected now says why, instead of
+  always saying that discovery batches failed.** `discovery_degraded` and the
+  JSON envelope are unchanged. The notice and the terminal warning name each
+  cause in plain words with what to change: discovery batches that failed
+  (worded as before); files that never reached a discovery prompt (over the read
+  cap, past a batch's share of the model's window, or unreadable); on
+  `--multi-model`, files neither model could extract; or a synthesis context
+  that could hold the files' extractions only shortened, or not all of them,
+  where a primary model with a larger window (`--primary-model`) or fewer files
+  (`--only`, `--exclude`) keeps more. The next steps follow the cause.
+- **Every count reads singular at 1 and plural otherwise**, in the terminal,
+  `--json` notices, next steps and errors, the setup screens and the window: "1
+  call at a time", "skipped 1 .mod file", "1 file was not extracted, so it never
+  reached synthesis", where these read "1 call(s)" or "1 files".
+- **A step in an answer on the window's All commands screen opens the form it
+  names, with its arguments**: one that opens the scan form no longer fills the
+  open command's form instead, and one that opens another command's form no
+  longer loses its arguments.
+- **Moving between scans in the window no longer fills the browser console with
+  errors** from the "Correct the parts" panel.
+- **The window's Running screen shows the newest run whenever it is shown**,
+  including one started and stopped from a terminal or an agent, with its Resume
+  step.
+- **The window's Scan screen asks again which models and server a scan would use
+  each time it is shown**, so a provider or server saved in a terminal while the
+  window is open appears there.
+- **A long command in a next step wraps on a narrow screen** instead of making
+  the page wider than the window.
+- **With two models and `--skip-review`, the second model's row says it extracts
+  every file**, no longer that it also grades.
+- **With `--progress jsonl`, the line naming the values a run changed from
+  their built-in ones is an output line and is no longer counted as a
+  warning**; any other start-up note is a warning event whose message is the
+  note as the terminal prints it. The window shows both as text.
+- **After re-reading what changed (`scan --parent <id> --changed`), a lineage
+  that has read part of a repository still offers to read more of it**: in the
+  scan's next steps, in `review --json` and in the window. Widening from the
+  re-read reads the ring the lineage planned.
+- **The estimate line a coverage scan ends with says "time not estimated"** when
+  only the calls and tokens were estimated, as the first estimate line does.
+- **The setup screens' ready card lists Esc**, and quitting there says nothing
+  was scanned and what was kept.
+- **A saved default that is out of range or the wrong kind is set aside on its
+  own**, and the other saved defaults still apply. The warning names
+  `init --reset <key>`, and `init --json` marks the value (`saved_problem`) and
+  leads its next steps with removing it.
+- **`refusals` names each gate's setting with its built-in and saved values**,
+  as `review --why` does, and its re-run step names only the gates that held
+  concepts back.
+- **`models` names your saved profile** and, with one saved, leads with
+  scanning rather than with saving a profile; its notice says in words that
+  install status is unknown.
+- **The plan's Intent line no longer prints a period before its semicolon.**
+- **`bridges --workspace` marks a concept it re-characterizes completely as
+  characterized**, as a scan does, and no longer marks a concept it could not
+  read as incomplete.
+- **A model answer cut at its output limit while the model was still reasoning
+  says so.** The error names how much reasoning the model wrote and that it
+  wrote no answer, on a local Ollama server and on an OpenAI-compatible
+  endpoint; the check for a model repeating itself reads that reasoning when
+  there is no answer; the run's closing note says how many discarded
+  generations held only reasoning; and the call's row in the run's call log
+  records its reasoning.
+- **`--record-examples` records the tokens of every send a call made.** A call
+  whose last attempt was cut at its output limit was recorded with no tokens,
+  and a call re-sent at a larger budget with only its kept answer's.
+- **A failed multi-model scan says "scan failed" once**, where it said it twice.
+- **A single-model scan that fails because a prompt was cut keeps its work in
+  the run's unfinished record**, when every discovery batch fails after the cut
+  and when strict Pass 2 classification stops because its calls were refused.
+  The record says the run cannot be resumed and holds the concepts the scan
+  had, and no scan is saved; before, the first case kept no record and the
+  second offered a resume.
+- **A multi-model scan no longer sends a compression request larger than the
+  model's window.** A batch that would not fit is split by size until each part
+  fits, and a context whose batches already fit is compressed as before. A file
+  whose extraction is too large to compress on its own is not sent: it is kept as
+  extracted, and the run's warnings in `agreement.json` say how many.
+- **A fractional `coverage_pct` in a multi-model extraction answer is parsed.**
+  The extraction schema allows any number, and a fraction failed the whole
+  answer, which dropped that model's extraction of the file.
+- **After a prompt is cut, the calls a run refuses are recorded as refused**
+  (`error_kind` `refused` in the run's `calls.jsonl` and in a `--record-examples`
+  capture), each under its own model and with no tokens, no longer as cuts
+  carrying the first call's count. `distill prepare` writes them to no split and
+  counts them (`refused_examples`). The error that stops the run names the call
+  that was cut, its estimated size and the window, and says whether the prompt
+  was larger than the window the run was sized for or the server applied a
+  smaller one.
+- **A multi-model scan that a cut stops keeps its work in the run's
+  `unfinished.json`**: which stages finished, how many files were extracted, and
+  where each model's extraction answers are cached. Nothing is saved as a scan.
+  `scan --resume` on it is refused with the reason, and the error offers the
+  command that runs the scan again, re-using the cached extraction answers.
+  `unfinished.json` is now version 3.6.0, and `scan --resume` refuses a record of
+  an earlier version.
+- **An OpenAI-compatible server that refuses `json_object`, as LM Studio does,
+  is sent plain text**: LM Studio accepts only `json_schema` or `text`, so with
+  `CS_REMOTE_JSON_SCHEMA=0`, after it refused a schema, and on every call that
+  asks for JSON without a schema (the summaries and documentation matching that
+  enrich code concepts, and `figure draw`), each request failed with HTTP 400.
+  The request is now sent again with no response format, and the rest of the
+  run sends that server none, so one request is spent finding out; the answer is
+  read as text.
+- **`update` in the container image offers the image pull whatever the image's
+  version**: an image whose binary carries no release version was offered the
+  install script, which in a container installs into a home the container
+  discards.
+- **A purpose given with `--intent` or `--intent-file`, or a `--behaviour`,
+  longer than its limit is cut at a word and says so**: it was cut inside a word
+  with nothing said. The plan's lines and `intent.json` (`purpose_cut_from`,
+  each behaviour's `cut_from`, `cut`) name the limit and how to keep the text
+  whole (`--intent-max-purpose`, `--intent-max-behaviour`, or `init` to save
+  either).
+- **A scan's time and cost estimates read no call history from a data directory
+  the scanned repository could have written**: in the container image and the
+  GitHub Action the data directory is the mounted repository's `data` folder,
+  where the repository could place rows that move an estimate. The estimate then
+  reads no earlier run's calls and says so on the plan's lines, in `arc.json`
+  (`history_not_read`) and on the "Estimated runtime" line; the run's own calls
+  are priced as they finish.
+- **A `--multi-model` scan's concepts carry their unusualness notes**: the
+  synthesis step asked for the details that support each concept, and its
+  category, without requiring them, and models that write required fields first
+  often left both out, so those concepts shipped `unusualness_notes: []`. The
+  synthesis request now requires a category and at least one supporting detail
+  on every concept, and no longer asks for a field nothing read.
+- **Every semantic batch's discovery prompt carries its grouping hypothesis as
+  written**: a batch holding every file the hypothesis was written for no longer
+  gets a note saying it holds part of a group. This changes the discovery
+  prompts of first and widening scans.
+- **On a re-read after a Python file changed, a method a concept names on one of
+  the file's classes counts as resolved only if the file still defines it.** A
+  call that outlived its definition no longer makes the concept read as current;
+  such a concept is stale, naming the method, or retired when that was all it
+  named.
+- **A scan given `--only` counts the files outside it apart from `--exclude`**,
+  and its summary says both.
+- **A discovery whose model named nothing in the files it was sent says so as
+  the model's answer**, which the discovery instructions allow, rather than
+  telling you to treat it as a tool fault.
+- **A first scan's estimate line says how many discovery calls and tokens it
+  counted** when only the time is unknown, where it said "discovery not
+  estimated".
+- **A widening's or re-read's possible duplicates by name follow renamed
+  files**, so two concepts in one file after a rename are marked as in the same
+  file.
+- **A model answer cut at its output budget is not asked again at a budget the
+  model cannot write before `--timeout`**: the raised budget is held to what the
+  model writes in that time at the rate it just wrote, and a raised attempt that
+  still reaches the timeout is sent once, not twice. The note at the end of a
+  scan says when the timeout ended an escalation.
+- **`synthesize`, `bridges`, `triage` and `figure draw` count their warnings**;
+  they printed them as `INFO WARN ...` and their `status.json` said 0 warnings.
+- **With an OpenAI-compatible server, characterization's schema requires each
+  distinctiveness mechanism's category**, which servers that write required
+  fields first were mostly leaving out.
+- **With `--tests evidence`, a test file that `--only` leaves out is not paired
+  or sent to the model**, a remote provider included; `--exclude` and dropped
+  folders already kept a test out.
+- **`triage` chooses its candidate files with the scan's own file set**
+  (`--only`, `--exclude`, dropped folders, the documents and tests settings),
+  says which on its output and in its `--json` notice, and refuses a file-set
+  record this machine did not write, as `synthesize` and `bridges --workspace`
+  do.
+- **On a scan of a repository's subfolder, license analysis reads the files
+  concepts cite**, where every import extraction failed and no license risk was
+  reported.
+- **A concept held back because a required field stayed empty after the call
+  that asks for it again failed is recorded as a runtime failure**
+  (`required_field_repair_failed`), not as the model's
+  (`required_field_missing`); `review --why` and `refusals` say which.
+- **A concept that names a file the scan was told to leave out is no longer
+  described from it**: with `--exclude`, `--only`, a dropped folder, or the
+  documents or tests settings, the file's text is not read or sent to the
+  model, a remote provider included. The concept ships uncharacterized, and the
+  refusal record says why.
+- **`bridges --workspace` applies the scan's own file set before it describes
+  concepts again**, says which on its output and in its `--json` notice, and
+  refuses a file-set record this machine did not write, as `synthesize` does.
+- **Test pairing does not read a file the scan left out**; such a concept is
+  counted in `tests.json`'s new `not_collected`.
+- **On a scan of a repository's subfolder, `grounding.json` and
+  `redundancy.json` check the files concepts cite**, where they checked none.
+- **A concept that shipped without its engineering axes after being asked for
+  them twice is named in the refusal record** (`axes_unanswered`), which
+  `review --why` and `refusals` show.
+- **A concept whose description left out a field because it repeated a test's
+  data word for word is named in the refusal record** (`copied_test_data_field`),
+  which `review --why` and `refusals` show; the concept still ships.
+- **Semantic batching reads the language of the files a scan reads** (after
+  `--only`, `--exclude`, the documents and tests modes and dropped folders), not
+  whatever a project file at the root names: a Go repository scanned with
+  `--exclude '*.go'` batches its Python semantically in a build with cgo, and a
+  scan that reads only documents batches them semantically.
+- **On a scan of a repository's subfolder, a concept located by asking the model,
+  and a concept whose file could not be found, name their file relative to the
+  repository's root**, like every other concept and the refusal record, and a
+  concept located that way is described even when the root holds a file of the
+  same name.
+- **Security: no suggested next step, notice, refusal, error or record repeats a
+  user name, password, token or key written into a server address or a
+  repository URL, and no step runs on an address other than the one you gave.**
+  Where printing an address would change it, the step asks you for it
+  (`--base-url <base-url>`, `--ollama-host <ollama-host>`,
+  `<repo-url-or-path>`): in every next step in the terminal, in `--json` and in
+  the window, the dry run's steps and saved setup, the setup screens' command,
+  and a stored scan's re-run, widening and re-query. That covers both model
+  clients' own errors, the saved provider in `models --json`, a run's target in
+  `status`, a tier sweep's arm records, `arc.json`, and a remote repository's
+  clone, whose git configuration keeps no credential. Addresses whose password
+  holds `?`, `#` or `/`, and addresses with no scheme (`user:password@host`,
+  with or without a port), are shown without their credentials. A tier sweep's
+  arm still sends its requests to the address as given; only what it records
+  leaves the credentials out.
+- **Resuming a scan of a repository whose URL held a credential asks for the
+  repository again** (`unfinished.json` 3.5.0, `give_target`); a 3.4.0 record
+  is refused as another version's.
+- **`models describe` saves a description under the endpoint without its
+  credentials**, and `init --json` lists saved endpoints the same way.
+- **`--ollama-host` given as a host and port (`127.0.0.1:11434`), on the
+  command line or saved, reaches the server**, and `models` says when something
+  other than Ollama answers there, as a scan does. Every request to an Ollama
+  server keeps the query string of `--ollama-host`.
+- **An option given empty text counts as not given in every rule between
+  options**, as in the window's form: `scan --changed --parent ""`, `init
+  --multi-model --secondary-model ""` and `scan --behaviour x --intent ""` are
+  refused. `scan --depth 0` (derive the depth) is accepted beside
+  `--multi-model`, and `help --json` lists such a value as `asks_nothing`.
+- **A remedy that keeps `--depth` beside a saved multi-model profile turns the
+  profile's two models off** (`--multi-model=false`) instead of being refused
+  again.
+- **"Re-run in thorough mode" after a scan that ran one model stays one
+  model**, and **the steps a finished resumed scan prints no longer resume the
+  stopped run again.**
+- **`scan --exclude-docs` and a typed `--include-tests` at a terminal no longer
+  meet a setup screens' choice they contradict**, so the commands the screens
+  print, their resume record and `saved_setup.args` run as printed.
+- **With the setup screens, the "Using saved profile" line is printed after the
+  models screen** and names what was chosen there.
+- **`refusals`' re-run of a scan that read part of the repository reads the
+  same part** (`file-set.json` 1.2.0).
+- **`init --multi-model=false --secondary-model <tag>` saves a single-model
+  profile graded by that model**, also beside a saved multi-model profile, and
+  `init --remove-key` is refused beside `--secondary-model` and `--multi-model`.
+- **`figure draw` takes `--thorough`.**
+- **A scan given `--intent-file` copies the file only for a stopped run it can
+  resume**, and leaves no copy when it finishes.
+- **A scan no longer takes a default another process saves while it runs**
+  (in the window's Settings, or with `init` in a second terminal).
+- **With `scan --depth` given and no model profile saved, the setup screens'
+  models screen opens on one model**, the recommended profile's primary alone,
+  since a scan given `--depth` refuses two. `models --depth` answers the same,
+  so the window's models card follows the scan form's `--depth`, and `models`
+  says when a scan given the same flags would refuse the models it shows.
+- **The window:**
+  - a value chosen from a list for an option given more than once
+    (`init --reset`, `tiers run --arm`) now reaches the command it runs;
+  - a typed folder or file name starting with `-` is passed as `./<name>`;
+  - a form no longer adds event listeners each time it is drawn again;
+  - `--two-phase` and `--no-semantic-batching`, which `CS_TWO_PHASE` and
+    `CS_SEMANTIC_BATCHING` can turn on, are offered as not set, true or false,
+    so a window started with one of those variables can turn the switch off for
+    a run; `help --json` lists such a switch's variable as `env`.
+- **`models` on a remote provider suggests what a run there needs**: a scan on
+  the endpoint, saving it, describing an unlisted model, and the providers
+  guide. It no longer suggests local profiles or Ollama remedies.
+- **A download step for an Ollama server at a non-default address no longer
+  types an `OLLAMA_HOST=` prefix that Windows shells do not read**; it names the
+  server and says how to reach it.
+- **`review` with nobody at the terminal, a scan id that is not stored
+  (`synthesize`, `triage`, `bridges`, `submit`), and `tiers report` on a missing
+  or unreadable folder refuse with the steps that fix the problem.**
+- **`status --timeout` without `--wait` is refused**, since the timeout only
+  bounds the wait.
+- **The window's figure panel shows the same live status line as the
+  terminal, and the models card's Profile list shows the saved profile** rather
+  than "Your own models".
+- **The window's forms follow a value saved in Settings without restarting the
+  window.**
+- **The window's review filters include exported (submitted) items.**
+- **A form the window fills from a next step no longer puts an option's value
+  into the repository field.**
+- **`distill gate --calibrate` exits 1 for a judge that does not pass
+  calibration, with `--json` as without it**; under `--json` it exited 0.
+- **A failed command's suggested next steps run that command.** A model server
+  that did not answer, a remote provider with no `--base-url`, an unknown flag
+  or a wrong number of arguments no longer suggest `scan`.
+- **A refusal of what a command was given suggests the change to make, never
+  the refused line again**: review, submit, figure draw, distill, models
+  describe, init, tiers, synthesize and the provider flags.
+- **Every next step that needs a value from you carries what it already has and
+  what is left to give**, so the window can open it as a form: the benchmark,
+  the tier sweep, the training-corpus commands, the figure correction, "Run a
+  scan", and "Scan the repository again" after a write into a scan from an
+  older version, which now runs from the path and flags that scan recorded.
+- **A next step no longer repeats `--json` or `--progress`** from the run that
+  offered it.
+- **After a 401, the step to save the key saves it for the endpoint the run
+  sent to**, not the one saved with `init`; for an endpoint given on the
+  command line it carries the run's `--primary-model` as `--model` and says it
+  makes that endpoint the saved provider. When the address held a user, a
+  password or a key, you type the address.
+- **A port on which something other than an Ollama server answers is never
+  offered an API key**: the steps say to check what is on the port, or to
+  point `--ollama-host` at the model server.
+- **An `ollama` command is suggested only where it reaches the run's server**:
+  a server on this machine at a port other than Ollama's own is named, with no
+  `ollama serve` or `ollama pull`, and `models` treats a server given as host
+  and port (`127.0.0.1:11434`) as on this machine.
+- **A refusal for a small described window offers to describe it again and to
+  measure it here**, and asks for the address when the address held a user or a
+  password; on a server that answers as Ollama it offers neither, since
+  Ollama's own API refuses both. `models describe --measure` on Ollama's own
+  API offers the description without `--measure`, not `--window`.
+- **Saving an endpoint whose address held credentials is a step you fill in**,
+  and `models` on a remote provider says nothing of Ollama.
+- **`tiers report` names every disqualified arm in one step**, so the other
+  steps are not cut off.
+- **`CONCEPT_SCANNER_PROGRESS=jsonl` stops only a command that streams its
+  progress from asking**: `init` and `update` ask again under it.
+- **`distill gate --incumbent ""` is refused as giving neither flag**, the way
+  an empty required flag is.
+- **A remedy for a rule between flags mends that rule and breaks no other**,
+  never gives back a flag it drops, and leaves out a flag the rule reads as
+  given empty (`--incumbent=`, `--resume=`), so following one no longer loops.
+- **The step to resume a stopped scan is `scan --resume <run-id>`**, without an
+  empty `--resume` in front of it.
+- **A resume says nothing about the setup screens**, which a resume never
+  opens.
+- **A scan given `--intent-file` is resumed from a copy of the file as it read
+  it**, so a later change to the file, or a later dry run that rewrites the
+  saved setup, does not change what the resume ranks.
+- **A repository's saved setup is one plan file** (`saved-setup.json`, in that
+  repository's `plans` folder under `~/.concept-scanner/repos`), not one per
+  dry run, and
+  `saved_setup.args_note` says the arguments read it as the latest dry run
+  wrote it.
+- **`review` of a scan id that is not stored is refused** with the stored
+  scans to choose from.
+- **Notices and steps about concepts held back as textbook say both checks
+  held them**: classified `textbook` and scored below the floor. A scan that
+  shipped nothing for that reason no longer suggests a lighter model.
+- **`status` prints each running command's tokens and warnings once**, and the
+  heartbeat's status line once.
+- **The window gives a flag you set even at its default**, and keeps a switch
+  a followed step gives at its default, such as `--two-phase=false` or
+  `--parallel`, so the command it runs is the one the step shows; a checkbox
+  turned on and off again still gives nothing.
+- **In the window, "Use it" fills the scan form as yours**, so leaving the tab
+  and coming back keeps it, and a step that runs `update` opens Settings, where
+  the window checks and installs updates.
+- **After a scan started from the setup screens, every next step it prints,
+  and the steps `review` prints for it later, repeat the choices made on the
+  screens**: the models chosen, the tests mode and passes, and for a re-run the
+  plan and coverage. They repeated the flags typed on the command line, so with
+  `--multi-model=false` given and two models chosen on the models screen the
+  widening ran one model, a re-run read every file, and a widening of a scan
+  whose tests mode was changed on the screens was refused.
+- **"Re-run in thorough mode" runs the thorough model even when the scan was
+  given `--primary-model`**, which it used to repeat, overriding `--thorough`.
+- **When the models screen refuses the models chosen** (`--merge-model` with one
+  model, `--depth` with two), **it names the screen's choice as the cause and
+  says what can be done there**: choose other models, or press esc to quit and
+  run the scan again without the flag. A long message there wraps instead of
+  being cut at the terminal's width. At a command line, the `--merge-model`
+  refusal's first step is now "Add --multi-model", the words of its message,
+  and the `--depth` refusal beside a saved two-model profile names all three of
+  its remedies.
+- **The frontload measurement's larger-budget step uses scan's own
+  `--budget-discovery` flag** instead of an environment variable, and
+  `distill prepare`'s "keep the fractions fixed" step names the fractions the
+  run used.
+- **`triage` and `bridges` check the stored scan and `--workspace` before
+  contacting the model server**; `triage` refuses a scan written by an older
+  version before spending anything and fails when it cannot write a result;
+  `synthesize` validates `--workspace`.
+- **`--progress jsonl` means a command asks no question**, for every command.
+- **`tiers run` uses the Ollama server saved with `init`**, and refuses a
+  `--timeout` outside 10 s to 24 h.
+- **A window given with `models describe` must meet the same minimum as a
+  measured one**, and no longer hides a window the server declares;
+  `models describe --measure` reads a declared window before probing.
+- **A first run that picks a cloud endpoint at the first-run question sends as
+  many requests at once as a scan sent there from the start**, and its record of
+  changed settings compares with that endpoint's default.
+- **The record of changed settings says what each of a run's calls used**
+  (`models.json`'s `settings_changed`, the start-up note, the `--json` notice,
+  `status.json`). Under `--two-phase`, a `--timeout` below the two-phase floor
+  is no longer listed as a change and one above it is compared with the floor; a
+  multi-model scan's extraction, synthesis and merge calls, which take the
+  timeout as given, are listed apart, named in a new `for` field. A context cap
+  set by `CS_REMOTE_CONTEXT_CAP` is listed as from the environment, and a
+  requests-in-flight choice made at the first-run model picker is listed for the
+  run it applies to.
+- **On a scan of a repository's subfolder, every row of `refusals.json` names its
+  file relative to the repository root**, as review shows a concept's file.
+- **`bench` records its warm-up request as a warm-up**, not as one of its timed
+  probes.
+- **When an OpenAI-compatible endpoint reports a model unavailable and the
+  scanner asks it to load the model, that request is counted** in the run's
+  `calls.jsonl`, `status.json` and cost.
+- **A scan's record of the values it changed compares `--parallel-batches`
+  with what that scan does with nothing given**: one request at a time against
+  a server on this machine, 4 against a remote endpoint. A local scan given 4
+  is now listed and one given 1 is not, where it was the reverse, in the
+  start-up note, the end of the `--json` notice, `status.json` and
+  `models.json`.
+- **A warm-up request is recorded under the `warmup` stage in a run's
+  `calls.jsonl`**, whatever system prompt it sends; the characterization
+  warm-ups and the two-phase Pass 3 warm-up were recorded as calls of their
+  stage.
+- **A `--multi-model` scan names every file in the requests it sends by its
+  path relative to the scanned folder.** The per-file merge, compression,
+  synthesis and concept-merge requests used the file's full path on your
+  machine, which on a remote endpoint sent your home folder's name and the
+  repository's location. A cached extraction of a file at the top of the
+  scanned folder, or more than one folder deep, is made again once.
+- **When the concept merge's answer placed a concept in two groups, the group
+  that lost it no longer carries the note the answer wrote for the whole
+  group**; it says what was taken instead.
+- **On a `--multi-model` scan, `refusals.json` names a concept held back as
+  textbook the way a single-model scan does**, not by an id that matched nothing
+  the scan stored.
+- **On a scan of a repository's subfolder, a concept whose name copies a
+  test's data is held back** even when a file with the same relative path
+  exists at the repository's root.
+- **A scan that stops before it is saved no longer names disclosure files it
+  never wrote**: each disclosure line is printed when its file is written, at
+  the end of the scan.
+- **A `--changed` scan sends each batch again as it first ran.** It re-ran a
+  semantic batch through the size-based prompt, without the grouping reason it
+  was first sent with, recorded it as size-based, and then planned new
+  semantic batches over the same files, so one pass could read the same files
+  two or three times. A `--changed` scan now plans no new semantic batch.
+- **The estimate before a `--changed` scan counts the batches it re-runs**,
+  where it packed the files afresh and could say one call where the scan made
+  two; the scan's summary line says how many discovery calls it makes.
+- **A scan refused before any model call offers the change its message
+  names** as a next step built from your own command line (a `--changed` scan
+  whose only change is a renamed file, a partial `--coverage` with no purpose,
+  a `--parent` it cannot read, and others), instead of a rerun with `--verbose`
+  and a provider check.
+- **Batch sizing counts the path the prompt shows**, not each file's full path
+  on disk, so a repository batches alike wherever it is checked out.
+- **In `union.json`, a stale concept names the symbols its description
+  mentions that its changed file no longer contains**, as a retired concept
+  does.
+- **The audit log's scan-complete entry records the scan's own duration.** It
+  read the clock again after reading file history from git, so it recorded tens
+  of milliseconds more than the result's `duration_ms`.
+- **A scan names `screen.json` only where it writes it.** The screen's line at
+  the start of a scan named the file in the scan's folder, so a scan stopped
+  before it was saved named a file in a folder that was never created; the save
+  now names it beside the final count of marked spans.
+- **`doc_concepts_characterized` is true whenever `--characterize-docs` ran on
+  a repository that is not docs-only**, including a scan that found no
+  documentation concept, where it said false.
+- **Pass 5 reads a load-bearing answer written as one object keyed by concept
+  ID** (each value a centrality) as the answer for the concepts it asked about.
+  It read one score from it and asked about each other concept again, one call
+  at a time. A key it did not ask about, or a value that is not a number, is
+  not read this way.
+- **A scan of a folder that is not a git repository no longer warns** "failed
+  to build file attribution ... exit status 128"; it says so at debug level.
+- **A scan of a repository's subdirectory records its first concept's file
+  history in the audit log**, read from the repository's root, where it
+  recorded none.
+- **A generation the output-cap escalation gave up on is counted once.** It
+  was counted twice in a run's tokens and cost, as discarded and again when
+  its call ended, so `status.json`, the console's running cost, the spend
+  ceilings and the envelope's `cost`, `pbd_cost` and `review_cost` read high
+  wherever a truncated answer was not retried.
+- **The note about discarded generations says what followed them**: how many
+  were re-issued at a larger budget, and how many were not sent again and why
+  (the calling stage's own bound, the most the call may be given, no room left
+  in the window, or the escalation steps spent). It said every truncated
+  attempt was re-issued.
+- **A `--multi-model` scan whose extractions fit written compact no longer asks
+  a model to compress them first.** Every form that drops nothing is tried
+  before a compression call; compressing first spent minutes on summaries that
+  hit their cap and were discarded.
+- **A run's `calls.jsonl` records every call the run counts**: each model's
+  synthesis on a `--multi-model` scan, the model warm-ups, `bench`'s probes and
+  the `anchoring-check` arms were counted and written to no row.
+
+- **A concept is placed only in a file the scan collected.** The location
+  repair, the base-name rescue and triage's candidates follow `--only`, the
+  documents and tests modes, `--exclude` and the run's drops, so a concept is
+  no longer grounded at a test the scan left out or at code a `--docs-only`
+  scan never read, and triage places a rescued concept at the file it asked
+  about rather than at a path the model wrote.
+- **The `triage` command re-types each concept it rescues**, as a scan does:
+  a concept moved into a document is a claim.
+- **Unresolved documentation claims are triaged when the only code concepts
+  are ones whose cited file did not resolve** (a document that cites a source
+  file reads as code until triage moves it), where one such concept kept every
+  claim from triage and they shipped unchecked.
+- **A concept triage could not locate is dropped before characterization and
+  documentation matching**, so no call is spent on it and `doc_matches` never
+  names a dropped documentation concept.
+- **Under `--characterize-docs`, the documentation concepts a scan ships are
+  handled as shipped concepts**: stored as concept files, so `review`,
+  `submit`, `figure` and the window reach them; grounded, attributed (with
+  `contributors` and the authorship caveat under git enrichment), audited, and
+  counted in `characterization_incomplete`, `components.json` and
+  `low_score_held`, which until now left out the documents it held back.
+- **A line range outside the part of a large file a call read is removed**,
+  keeping the file, so lines the model never saw are not attributed.
+- **"Running synthesis over N concepts" counts each concept once**, where it
+  counted three views of one list.
+- **The audit log names the repository as the envelope does** (an origin URL
+  without credentials, or a folder's name), never a path on this machine, and
+  its scan-complete entry follows Pass 5, so its cost includes Pass 5's.
+- **A required characterization field emptied because it copied a test's
+  data is held back as `copied_test_data`**, not as `required_field_missing`
+  "still empty after repair".
+- **The missing-fields warning says whether the characterization schema was
+  sent**, or why not (`CS_REMOTE_JSON_SCHEMA=0`, or the endpoint refused it).
+- **An endpoint's refusal of the output schema is followed by the plain JSON
+  request it asks for** with `request-attempts` at 1, where the run failed
+  with an unreadable error.
+- **Pass 5 judges a batch too long for the model's window in halves**, where
+  it judged none of it; a batch that timed out is still split, and a refused
+  response format stops.
+- **`source_weight` is always written**, so a weight of 0 you chose reaches
+  the importer.
+- **Every bridge axis reaches the output on 0 to 1**: a score written on a 1
+  to 10 scale is read as tenths and the rest are held to the range, where one
+  out-of-range axis made the importer refuse the whole bridge.
+- **`dependency_map` names files, never folders on this machine**: a manifest
+  relative to the repository, a licence in the module cache as
+  `module@version` and its path inside the module, and messages with the
+  repository, the module cache and the home folder taken out.
+- **No git this program runs follows an inherited `GIT_DIR`, `GIT_WORK_TREE`
+  or `GIT_INDEX_FILE`** (or any variable `git rev-parse --local-env-vars`
+  lists), which a git hook or another tool's shell can export, so a scan run
+  from one reads the repository it was given.
+- **A lineage whose folder is part of a larger git repository keeps its
+  concepts**: every earlier pass's concepts were retired as gone and every
+  rename read as a deletion. Such a scan now records its commit and branch.
+- **A lineage's re-query step lists each silent file once, at the path it has
+  now**; `review` and `submit` say why a concept is stale (no later pass
+  re-read its file, or one did and did not find it again); `review --sort file`
+  orders a moved concept by its path now; a rename is listed as kept only by
+  the pass that saw it; and a pass whose record this machine did not write is
+  named as not shown, where it was left out without a word.
+- **A widening, re-read or re-run started from `review` or `refusals` runs as
+  the scan did**, with its models and passes (`file-set.json` 1.1.0 records
+  the flags it was given as `rerun_args`), where it ran with the default
+  models and every pass on; a scan whose `--parent` was not trusted is re-run
+  as a scan of its own, never as that widening again.
+- **`--multi-model --tests source` masks a test's data** before either model
+  reads the file, as a single-model scan does.
+- **The multi-model extraction cache serves an answer only to the request
+  that made it**: its key holds the model as served (its weights, the server's
+  version and host), the think setting, pinned penalties, an endpoint's extra
+  fields and the schema sent, and the name the prompt gives the file. A
+  backend that cannot say what serves it is not cached, and the run says so.
+- **An item of a list a model wrote as an object reads the same on both
+  scanner paths** (`{"name": "x"}` is `x`).
+- **A lone `--secondary-model` is kept** beside a saved profile, the picker
+  and the setup screens' choice, where it was dropped in silence; the models
+  screen's printed command states the whole choice, so it runs what the
+  screen showed over any saved profile.
+- **A single-model scan given `--draft-model` records it** in `models.json` and
+  in each concept's `provenance.models`, where both named the primary.
+- **A remote scan under `--skip-review` checks no grader** against the
+  endpoint's catalog.
+- **A dry run's saved plan says a model the run downloaded is on the server.**
+- **Memory sizes are printed in decimal GB**, as the profile figures are.
+- **A next step with a value still to give opens in the window**: "run it
+  again with another model", the steps after `--local-only` refuses a run,
+  `scan <path>`, `status`'s "Start a scan", `models describe --window
+  <tokens>`, `bridges`' re-characterize step and `submit`'s steps carry
+  `prefill` and `fill`, where the window dropped them.
+- **The window's models card opens on a pre-filled form's model flags** and
+  keeps a choice of its own through `init`; it shows each profile's memory
+  mark and no grader under `--skip-review`.
+- **`anchoring-check` gives at least two next steps for every verdict.**
+- **A call that read and wrote nothing costs 0 for every model**, so one
+  failed call to a model with no listed price no longer makes the scan's cost
+  `null` and its cost line "unknown".
+- **An empty answer's cost counts what the model generated** (its output and
+  reasoning tokens) and what the endpoint reported, with the upstream that
+  served it.
+- **The setup screens' calls count** in the running cost, toward the next
+  call's spend-ceiling check, and in `served_by`.
+- **Multi-model compression's calls are in `pbd_cost`**, and the whole-scan
+  time estimate expects them.
+- **A ring's discovery cost and the whole-scan range count what each call's
+  endpoint reported**, where they used the listed price alone; the ring's cost
+  line says how its calls were counted.
+- **Estimates count the calls a batch takes**: a file read in parts and files
+  that do not fit one call count each call in the live time estimate,
+  `--dry-run` and the setup screens, and counting them marks no file as read;
+  characterization's estimate leaves out documentation concepts the
+  classification gate holds back.
+- **A card's command row wraps only at its spaces**, so a long command stays
+  whole on a narrow terminal.
+- **An answer or a value a command refuses gets that command's own next
+  steps** (a repeated `--behaviour`, `figure apply`'s checks, the picker's
+  answer, `--profile`).
+- **The missing-fields warning names the transport the run used**, and
+  suggests `--draft-model`.
+- **Small words in the setup card, `status`, the review list and a scan's
+  counts**: plurals agree, and `models` and `init` print one blank line before
+  their next steps.
+- **`printf A | concept-scanner review <scan>` keeps the decision typed
+  before input ends.**
+- **A stopped scan no longer spends about 20 seconds retrying calls the stop
+  refuses**, in characterization, the multi-model synthesizer and Pass 5.
+- **Under `--skip-review`, JSON repair no longer calls the grader**, a model
+  nothing had readied, and `models.json` names no Pass 2 model.
+- **The local audit log records the scan's models, whether Pass 2 ran, its
+  token totals and its cost** (null when unpriced, never 0).
+- **A command that is not a scan keeps the serial default** against a server
+  on this machine, where it went back to four requests.
+- **The scan's cost line says an OpenAI-compatible server on a loopback
+  address is not billed per token**, which is never priced, where it said
+  "listed prices".
+- **A scan at the smallest window a run accepts reads its files.** With a
+  server holding a model at 8,192 tokens, a scan passed the check before the
+  run, sent one call, read no file and exited 0 with no concepts: the sizing
+  left discovery's whole 8,192-token answer budget out of an 8,192-token window.
+  A prompt's sizing now leaves the answer at most half the window
+  (`max-answer-share`), which changes nothing at the default 32,768. The same
+  scan now reads all its files.
+- **The window measurement no longer calls a full window cut.** Its long prompt
+  was compared with a count scaled from one short prompt, which was up to 3.6%
+  off depending on the model's chat template; `gpt-oss` models on a server
+  holding the full 32,768 tokens were measured as cut. It now sends two short
+  prompts of different lengths first, so the comparison is exact, and three
+  prompts in all.
+- **A window measurement waits once, for up to ten minutes a prompt**
+  (`describe-measure-timeout`, for the check before a run and for `models
+  describe --measure` alike). The two used to differ (4 and 2 minutes), a large
+  model can take six minutes to read a prompt the size of the window, and a
+  prompt that timed out was sent three times.
+- **LM Studio's refusal of an over-long prompt is recognised** (its MLX engine
+  words it differently from its llama.cpp engine), and a server that cuts a
+  prompt to a length that does not show its window is told so, not told it
+  "refuses" the prompt.
+
+- **A model reloaded under a scan is said on any Ollama server.** The closing
+  "model reloads" line read the server's log, which exists only for the server
+  the app starts, so on a server started by hand, or on another machine, a
+  model another program kept reloading was never mentioned: in a test, 32 of a
+  scan's 94 calls waited for a load and the scan said nothing. The scan now
+  also counts its own calls that had the server load the model, from the load
+  time the server reports for each call, and says so when there were two or
+  more (`models.json` 1.6.0 records the count and the seconds).
+
+- **A server too slow to answer the window measurement is no longer called
+  too small.** On `--provider openai-compatible` with a server on this machine,
+  a long measurement prompt that timed out, or failed for any reason but its
+  length, was read as the server refusing it, and the run stopped saying the
+  window was "smaller than the 8192 tokens a run needs" with advice to load a
+  larger one. Found on a model loaded with a 192 GiB context on a 96 GB machine,
+  where the right advice is the opposite. An unanswered prompt now says nothing
+  about the window: the line says what happened, and the run asks for the
+  window, or stops with the `models describe --window` step. A server that does
+  refuse an over-long prompt (llama.cpp's own error is now recognised) is told
+  apart, and its message no longer claims the window is below 8,192, only that
+  it is below the 32,768 tried.
+- **`status.json`'s `heartbeat_s` is rounded up and never shorter than the
+  reporter's tick.** A heartbeat set under a second read as stale.
+- **`ui` says when a window already running keeps its values**
+  (`kept_values`), and names `ui --stop` then `ui`: values reach only a window
+  `ui` starts.
+- **`tiers run` passes the values it was given to each arm**, and the arm
+  record's batch size uses the discovery budget the arm resolves.
+- **`update`, `models`, `version` and `ui` apply the values a person gave or
+  saved.** The root's setup returned for them before it applied any, so a
+  value they read was offered and never used.
+- **`bridges` lists bridges of every size in its sizes line**, not only sizes
+  2 to 6, which `--bridge-max-components` already allowed past.
+- **A scan whose prompt the model server cut stops, and saves no scan.** The
+  server's own prompt counts show a cut: the half-window count Ollama and
+  llama.cpp keep, and, with no window known, the same count reported for two
+  prompts of clearly different sizes, which is how a server that cuts every
+  prompt to a fixed size looks. The call that shows it fails, every later model
+  call is refused unsent, the run exits 1, and its concepts are kept in
+  `unfinished.json` in the run's folder rather than saved as a scan. Before,
+  the scan was saved and its envelope written with concepts from a prompt the
+  model never read in full; only the exit code said otherwise. `bridges`,
+  `triage`, `synthesize` and `figure draw` check their prompts the same way and
+  save nothing after a cut.
+- **A value refused for its range gets its own next steps.** It was told to
+  re-run with `--verbose` and to check the provider; now it is told the range,
+  `help <command> --json` for every flag's range, and `init --json` for a value
+  `init` lists, and a saved value outside its range points at the settings
+  file. `--coverage` and `ui --port` word their refusals the same way:
+  `... is outside its range: give ... from 1 to 100`.
+- **`review <root-id>` reviews every branch of a lineage.** Two widenings of
+  one scan are two branches, and the review showed only the newest pass's,
+  leaving the other branch's concepts out with nothing said. It now reads the
+  union of every branch, shows a concept both branches found in the same file
+  under the same name once (listed under `shared_concepts`), and writes a
+  decision to each copy except one already exported. Any pass a review leaves
+  out is named, with why, under NOT SHOWN, on every surface that lists
+  concepts for review (`review`, `review --json`, `submit`, `figure draw`, the
+  store listing). A widening's possible duplicates and yield now count a
+  sibling's concepts too (`arc.json` 1.6.0, `union.json` 1.4.0).
+- **`scan --changed` compares a file with the newest scan that read it.** It
+  compared with the oldest, so a file edited once was read again by every later
+  `--changed`, and a file put back to its first content was not read again
+  though the scan before had read another version. Each recorded batch is also
+  re-run once, where a batch that several scans had re-run was sent once per
+  scan. A rename is now followed by every later scan, not only the one right
+  after it, which used to list the old path as deleted and retire the concepts
+  found before the rename.
+- **A test name the answer schema cut short no longer rejects its evidence
+  property**: the cut name is matched to the one paired test it begins.
+- **Pass 5 could crash on a document whose lower-cased text changed length**
+  (some non-ASCII characters) while looking for direction statements.
+- **`--tests source` no longer copies a test's data into a concept.** A concept
+  found in a test file is characterized from that file, and a test that builds
+  a record of the same shape the scanner writes had its values copied into the
+  concept, its scores included. The data a test constructs is now replaced by
+  `<test data>` before the model reads the file, and any characterization text
+  that still contains a sentence-length string from the test's data is removed
+  and the concept marked `characterization_incomplete`. The test's code, names,
+  comments and failure messages are still read, so a mechanism that lives in a
+  test (a harness, a guard) is still described.
+- **An answer that repeats itself until it is cut off is not requested again.**
+  Classification (Pass 2) and the `--multi-model` merge sent the same request
+  up to three times after a model looped to its output limit, and got the same
+  loop each time, about eight minutes apiece on a local model. They now stop
+  after the first. An answer cut off without repeating itself is still retried.
+
+- **A `--multi-model` scan's context compression could make the context bigger,
+  and then a file was dropped.** The step that summarises extracted files to fit
+  them in one prompt was given a fixed output budget unrelated to what it was
+  summarising, and a retry doubled that budget when a summary was cut off, so
+  four batches could write more than they were given: measured twice in one day
+  on the same eight-file corpus, growing it 23% and 25%, after which one file of
+  eight was left out of the prompt. Each summary is now asked for at most half
+  of what it summarises, and any summary that did not come back smaller than its
+  own batch is discarded in favour of the original files, so a compression round
+  can no longer grow the context whatever the model returns. A summary that
+  cannot be produced at that size keeps its files uncompressed rather than
+  failing the scan. Verified on a 24-file corpus whose context was three times
+  the room: the growth happened, was discarded, the context shrank 42%, and no
+  file was dropped.
+- **`--tests evidence` now reads an assertion made through a helper library.**
+  It read only assertions written as calls on the test's own testing value
+  (`t.Errorf` and its siblings), so a message passed to an assertion library was
+  not treated as something a test asserts. It now also reads an assertion handed
+  the testing value as its first argument (`require.NoError(t, err, "opening
+  the config")`), recognised by position rather than by library name so an
+  in-house wrapper counts too, and only when the call stands alone as a
+  statement, which is what keeps a fixture such as `f := newFixture(t)` out.
+  **This may change nothing for your project**: a quoted property can only come
+  from text a test contains, so a suite that asserts values without messages has
+  little for this mode to read whatever assertion style it uses. Re-measuring
+  the corpus that prompted the change moved the accepted count from 0 to 0, because
+  152 of its assertions carry 3 quoted strings between them.
+
+- **A scan of a symlinked directory read nothing and exited 0.** Pointing
+  `scan` at a symlink to a directory collected zero files and finished
+  successfully, where the directory itself collected all of them: the path
+  check follows a link, and the path the walk then used did not. A symlinked
+  target is now resolved to the directory behind it, as `git` and the `go`
+  command do, so it reads the same files. Scan output names the resolved
+  directory rather than the link that was typed. Measured on a 24-file corpus:
+  0 files through the link before, 24 after, against 24 for the directory both
+  times.
+- **`--draft-model`'s help said the default was your primary model, and on a
+  remote provider it never was.** With no `--draft-model`, a remote scan sends
+  its drafting calls to a stronger paid model, and those calls are not only the
+  synthesis passes: characterization is one call per concept, and triage, test
+  evidence, bridges and synthesis are on the same model. So a scan naming a
+  cheap `--primary-model` still spent most of its calls at the higher price,
+  while four help strings said otherwise. All four now say what the default
+  actually is and what the model is used for, and `PROVIDERS.md` documents the
+  remote default, what it is spent on, and how to keep everything on one model.
+  No behaviour changed: the default is the same, and it is now stated.
+- **Every structured answer's text is now cut at a stated size after it is
+  parsed.** A model that writes past a field's limit had its answer kept whole,
+  so an unusually long summary, `technical_approach`, `key_insight`,
+  `inputs_outputs`, component name or comparable-technique entry could be far
+  longer than anything a reader or a consumer expects. Each of those now has a
+  registered limit and is cut at a word boundary after parsing, and the scan
+  reports when a cut happened. Measured on the default model, nothing came
+  close to a limit, so this binds only on an answer that overruns.
+- **Pass 5 counted a partial answer as a complete one.** Its load-bearing phase
+  accepted an answer covering part of its batch as a success, so the retry and
+  the batch split that exist for that case never ran. It now compares what came
+  back against what it asked for and keeps a partial answer as a floor rather
+  than discarding it.
+- **A Pass 5 pattern scored by the model now outranks one left on defaults.**
+  When scoring returned fewer results than there were candidates, the
+  unanswered patterns kept their default scores and could sort above patterns
+  the model had actually judged. Scoring retries once for the candidates it
+  missed, and the sort puts judged patterns first.
+- **A correction now reaches the stored scan, not only the concept file.**
+  Applying a figure correction, recording a review decision, rescuing a
+  location with `triage`, re-characterizing with `bridges` and exporting with
+  `submit` all wrote the concept's own file and left the scan's own record
+  describing it as first found. Re-importing such a scan sent the original back
+  and undid the correction, and `synthesize` on a corrected scan read the
+  pre-correction concepts. Every one of those writes now updates the stored
+  scan as well, across all of the arrays it carries, and never changes which
+  concepts are in them.
+
+- **A corrected concept that was already exported can be exported again.**
+  `submit` required `approved` and set `submitted` itself, and `review --set
+  approved` refuses to change a decision behind an export that exists, so a
+  correction could only reach the consumer if it was made before the first
+  export. `submit` now accepts a concept it has already exported and writes the
+  draft again, which the consumer imports as an update to the draft it holds, by
+  id. It is refused only when nothing a consumer reads has changed since that
+  export, and it says so rather than rewriting the file for nothing.
+- **`figure apply` says what a second export does.** It described the consumer's
+  older behaviour, that submitting again would create a second concept. It now
+  says the consumer updates the draft it holds by id, and a corrected concept
+  that was already exported is offered that export as its next step.
+- **`figure apply` says when the figure it corrected was drawn over other
+  parts.** Its part numbers are then read in the current numbering, which only
+  the window used to disclose.
+- **A redraw no longer discards the record of your corrections.** It still
+  discards the arrows you drew, which is why it asks first, but the history of
+  what was renamed, removed, added and re-worded now survives it. A rename also
+  records the label it took off the figure, so what the model had drawn is still
+  visible after you replace it.
+- **A correction is judged against the component list the concept already has.**
+  `figure apply` refused every correction to a concept outside the 2 to 12 parts
+  a figure draws, including one that changed no part at all: new prose, a rename
+  or an arrow on a concept with more parts than a figure draws was refused, and
+  so was renaming the single part of a one-part concept. A correction is now
+  refused only where it takes the count further out of that range, and the
+  message says when the concept was already outside it.
+- **A figure says how many of its concept's parts it does not draw.** A figure
+  draws at most 12 boxes, and a concept can carry more parts than that, so a
+  figure could quietly show twelve of fourteen. Its note now says how many parts
+  are not drawn and how many boxes a limit refused, and it says the same when
+  the model simply left a part out.
+- **Every text a correction carries is cleaned before it is stored.** The arrows
+  you draw and the record of each correction were written to `figures.json` and
+  returned by `figure apply --json` without passing the output vocabulary check
+  that every other field passes. An export was never affected.
+- **An arrow can be removed from a figure whose model wrote `C1` for `c1`.**
+  `figure apply --remove-edge` could not find an arrow the figure was drawing,
+  and the terminal did not mark your own arrows as yours, when the model wrote a
+  component's number in another spelling. Figures drawn before this still work.
+- **A component with no text is reported rather than breaking the file.** One
+  such part made `figure draw --all` fail for the whole scan on every attempt.
+  It is now reported as not drawable, naming the part and the correction that
+  repairs it.
+- **A damaged `components.json` no longer stops a draw or invents a reason.**
+  The read failure is reported, and a concept with no components whose cause is
+  unknown says so instead of saying the scan predates that file.
+- **The window asks before a redraw discards the arrows you drew.** Its Redraw
+  button always replaced the figure, which the command refuses to do without
+  `--redraw` for that reason. It now says how many arrows would be lost and
+  replaces the figure only if you press it again.
+- **Starting a command no longer erases what was on the terminal above it.** A
+  command with a live status display, a scan among them, printed its first line
+  before the display had drawn, and the display's first frame then cleared the
+  screen below that line, so most of what was already on screen disappeared.
+  Output now waits for the display's first frame. Menus and the live display no
+  longer leave a stale copy of themselves behind when they get shorter (a menu
+  kept its whole list on screen, with the cursor on the default rather than on
+  your choice), and a long line printed above the display no longer loses one
+  character each time it wraps.
+- **The first setup screen waits for the model to read your documents.** It
+  opened empty and accepted Enter before the answer arrived, so the purpose it
+  found never reached the plan. It now shows that it is reading and holds Enter
+  until the answer is in. The ready screen says whether bridges will run; it
+  said "bridges off" for scans that ran them.
+- **A scan that holds back or drops everything it found says so.** It said it
+  "found no mechanism" right after holding mechanisms back below the score
+  floor, or after dropping every one because each cited a file the repository
+  does not have. The next steps now give the count and offer a re-run with
+  `--include-textbook`, or the refusals with the file each concept cited.
+  Re-run steps carry the scan's own path and flags instead of `scan <path>`, so
+  the window can offer them as buttons.
+- **A bridge no longer ships after the concepts it combines were dropped.**
+  Bridges were drawn before the last check that drops a concept citing a
+  missing file, so a bridge could ship whose every concept had been dropped.
+  A bridge is now kept only when every concept it combines ships, and the run
+  says how many were left out.
+- **Rescans and plans count correctly.** `scan --parent <id> --changed` crashed
+  whenever a file had changed. It now runs, says that it re-ran the recorded
+  batch holding the changed file (it said there was no file to batch and then
+  found concepts), and counts a re-read file once (it reported 135% coverage,
+  and said the changed files were not read again on the pass that re-read
+  them). A `--dry-run` plan no longer skips a ring number when a widening step
+  adds no file.
+- **What a scan prints reads as text.** Drop counts, contributing concepts and
+  word lists printed in Go syntax (`map[file_missing:2]`, `[a b]`) and now read
+  as lists. Sizes under 1 KB print in bytes rather than as "0 KB". Git's own
+  files are no longer counted as excluded "generated" files (27 on a two-file
+  repository), and `go.mod` and other settings, data and media files are
+  reported as not a program rather than as an unsupported language. The warning
+  that most characterizations were missing fields no longer counts concepts
+  that were never characterized. Closing lines read "Bridging complete" and,
+  for a dry run, "Planning complete", where they read "Bridg complete" and
+  "Scan complete"; `figure draw` closes after the figure it drew; and
+  `synthesize` counts the concepts it reads (it said 4 for a scan of 2).
+- **Next steps and help.** No next step runs `open` any more, which exists only
+  on macOS; seven of the thirteen that did opened files an installed copy does
+  not have, and addresses now go in the step's reason. `bridges` suggests
+  `submit` with the scan id it needs. `triage` says when nothing needs
+  grounding instead of announcing that it is asking the model. Help no longer
+  names internal identifiers, and the main help prints one Usage block.
+  `status --wait` says which run it waits for, and that Ctrl+C stops the
+  waiting, not the run. The `--multi-model` error names `init --profile
+  validated` as the way to save a profile. The `.env.local` note no longer
+  calls an API key set there a variable this tool does not read: keys are read
+  from the environment, never from that file.
+- **The window's Settings no longer contacts GitHub when you open it.** It
+  asked for the newest release on every visit, every refocus and after every
+  save; it now asks only when you press Check now, which is what the README
+  promises. The Validated profile's row shows both models it runs, not only the
+  first.
+
+### Added
+
+- `review --json` carries `concept_refs`, the name each concept is addressed by,
+  one per concept in the order they are listed, which is the name `figure draw`,
+  `figure apply` and `submit` take.
+- `figure draw --json` carries `unreadable` when a disclosure beside the scan
+  could not be read, so a missing reason is visible rather than silent.
+- `help --json` lists rules between a flag and a positional argument, as kind
+  `excludes_arg`: `figure draw` names a concept or passes `--all`, never both.
+- An exported draft distinguishes "no arrows" from "nothing to say" about them:
+  `component_edges` is absent when there is no figure to read, or its parts have
+  changed since it was drawn, and an empty list when the figure draws no arrow
+  between two components.
+
 ## [1.3.0] - 2026-10-06
 
 ### Added
@@ -1839,7 +3785,7 @@ generation mode behind an off-by-default flag.
 
 ### Fixed
 
-- **Vocabulary neutralization now matches the platform exactly.** Six phrases
+- **Vocabulary neutralization now matches the importer's exactly.** Six phrases
   were neutralized by the hosted scanner and not by this one, so the same text
   was cleaned or not depending on which scanner ran; two more were neutralized
   to different wording on each side, so one concept could read differently
