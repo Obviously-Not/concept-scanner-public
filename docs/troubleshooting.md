@@ -876,8 +876,10 @@ unaffected either way.
 
 ## "License check incomplete" / "manifest(s) could not be analyzed"
 
-**Symptom:** the scan summary's `License:` line says `License check incomplete`
-or `N manifest(s) could not be analyzed, see dependency_map.errors`.
+**Symptom:** the scan summary's `License:` line says `License check incomplete`,
+followed by `the go command was not found on PATH, so the Go module's
+dependencies were not analyzed` or by `N manifest(s) could not be analyzed
+(dependency_map.errors holds why)`.
 
 **Cause:** for a Go repository, license analysis asks the `go` command to list
 the packages the repository depends on, then reads each dependency's license

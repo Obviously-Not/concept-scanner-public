@@ -356,7 +356,10 @@ Names: `characterization`, `completion`, `triage`, `figure`, `warmup`,
 `merge-local`, `merge-remote`, `pass2`, `discovery`, `batch-suggest`,
 `distill`, `extract`, `enrich-tldr`, `enrich-match`, `enrich-summary`,
 `test-evidence`, `project-intent`, `locate-paths`, `bridge`. A value from 0 to 262144 is
-accepted. `concept-scanner init --reset <name>` removes a saved budget too.
+accepted. `concept-scanner init --reset <name>` removes a saved budget too. A
+saved budget or a `CS_BUDGET_*` variable that is not a whole number from 1 to
+262144 is set aside, alone, and said when a command that reads it starts: the
+next value in the order above applies, and `init --json` names it.
 
 ## Advanced: defaults
 

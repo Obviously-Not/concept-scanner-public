@@ -6,6 +6,261 @@ All notable changes to concept-scanner are recorded here. The format follows
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-10-16
+
+**This release changes no part of the output contract** (the concept, the bridge and the scan result keep
+schema 2.0.0), so a program reading 2.0.0 output needs no change. Its changes are in what a run says about
+itself, what it refuses and when, and in five records that are not the contract, each with its own schema
+version: the refusals ledger (2.0.0, its `rule` field removed), `redundancy.json` (1.3.0), `tests.json` (2.5.0),
+a dry run's saved plan (1.5.0) and `arc.json` (1.13.0).
+
+### Added
+
+- **A scan says what it found, what shipped and where the rest went**, in one
+  account its summary, its run caveat (the `--json` notice, the `Coverage:`
+  line, the closing caveat and the GitHub Actions summary) and its next steps
+  all read: how many concepts it found, how many shipped, and how many were
+  held back by the gates, cited a file that could not be found, repeated a
+  concept of the same name in the same file and were folded into it, were
+  documentation claims merged into the code concept of the same name, or were
+  documentation concepts kept as context for Pass 4 and not shipped
+  (`--characterize-docs` ships them). The parts add up to what was found.
+- **`review --json` and the `review` list say how many concepts each
+  lineage's passes held back** (`held`), counted from every pass's refusal
+  ledger, and `review --json` gives the step that shows them (`held_back`),
+  from the pass whose ledger holds them. The terminal says the count in its
+  header, after `--set` and in the stored-scans list; the window says it on
+  the lineage's line and in a Held back column on the Scans screen.
+- **A scan that failed or was cancelled says where it stopped**: the stage
+  and how many of its steps were done, as `stopped_in` in its `status.json`
+  and on the `run_end` event of `--progress jsonl`, in its closing line
+  ("Cancelled after 3m in Pass 2 classification, 4 of 9 steps done"), in
+  `status`, and in the window's job view and last-run card. `status` also
+  says, beside the path of a stopped run's `unfinished.json`, what that record
+  kept (`unfinished_kept` in `status --json`).
+- **`tests.json` counts the test files it read** (`test_files_read`, schema 2.5.0), and is written only when a
+  test file was found beside a shipped concept.
+- `concept-scanner cache clean` empties both caches this program keeps in your user cache folder (a multi-model scan's per-file extractions, and the discovery answers) and says how many entries and how much space each one freed. With `--json` it answers with the same counts, and the window reaches it from All commands. Nothing is lost: the next scan asks the model again.
+- A run's record of its model calls (`calls.jsonl` in the run's folder) says the output budget each call was actually sent with: `num_predict_sent`, and `num_predict_first_sent` when the budget was raised after an answer was cut off. `num_predict` is still the budget the stage asked for. A call that failed now carries the input check's verdict (`input_check`), and a call whose prompt the server cut says `cut` with how much of the prompt the server read.
+- `redundancy.json` (schema 1.3.0) lists every concept a scan folded into another before it shipped: the folded concept's name and file, the concept it was folded into and whether that one shipped, and where the fold happened. Folds across files, where one title can be two mechanisms, are counted apart, and the scan's redundancy line counts them. What a scan ships does not change.
+- A scan says how many of the concepts it ships carry contributors from git blame, and what contributors cannot say (who last wrote the lines, never who designed the mechanism). The GitHub Actions summary has an Authorship row.
+- A scan that reused a cached discovery answer prints the discovery cache's limits under its cache line.
+- A dry run of a `--changed` re-read names the files it judged changed (the first three, and how many more). The saved plan, and `scan --dry-run --json`, carry the whole re-read plan under `rescan`: the changed, deleted, renamed and dependent files and the batches it would re-run (saved plan schema 1.4.0).
+
+### Changed
+
+- **A concept's license findings state facts and give no advice.** Each
+  `license_risks` entry's `impact` now says what the dependency's license is
+  and what its terms reach (a strong copyleft license reaches a distributed
+  program that includes the library; a weak one, the library's own code), or
+  that its license was not recognized, could not be read, or was not found.
+  It no longer tells the reader what to do: "ACTION REQUIRED", "Consider:
+  replace, isolate or document a compliance plan", "Before filing, manually
+  verify" and "Treat as proprietary" are gone. The output contract's shape is
+  unchanged; only these strings are.
+- **The scan's `License:` line, and `license_stats.summary_message` in
+  `--json`, say what was found rather than "License review needed".** It
+  reads, for example, "License check: 12 dependencies analyzed; the concepts'
+  license_risks hold 3 entries for a copyleft license", counting entries
+  (one library imported by three concepts is three), and says "License check
+  incomplete" whenever a manifest could not be analyzed, also when risks were
+  found beside it, where it said "review needed" before.
+- **The summary after a scan prints "Concepts shipped"** for what shipped, and
+  "Concepts found" for what the run found, where it printed the shipped count
+  as "Concepts found", so a run that held back every concept it found said it
+  found none. A "Not shipped" line says where the rest went. The window's Scans
+  column "Found" is now "Shipped".
+- **The step to see what the gates held back counts only what they held back
+  or dropped**: a shipped concept the refusal ledger records as incomplete is
+  no longer counted as held back, and a scan whose ledger holds only such
+  concepts offers a step to see why they are marked incomplete.
+- **`review` on a lineage that holds nothing to decide but held concepts back
+  leads with what was held back and the re-run that keeps them**, instead of
+  "Scan another repository". The window's "What was held back" follows that
+  step, so it lists the holds of the pass that has them (a widening's, when
+  the widening held them), where it listed only the first scan's.
+- **A `--changed` scan's caveat says its files changed or shared a recorded
+  batch with a file that did, and how many changed**, where it said every file
+  it read had changed.
+- **A scan beside whose concepts no test file was found says "Tests: no test
+  file was found beside the shipped concepts" and writes no `tests.json`**,
+  where it said "0 of N shipped concepts are paired" and named a `tests.json`,
+  a documentation-only scan included.
+- **`status.json` is schema 1.4.0** (`stopped_in` added; nothing removed).
+- **`scan --multi-model` with no second model saved runs the default second
+  model**, as `--secondary-model`'s help always said: the saved profile's
+  second model, else `gpt-oss:20b` on Ollama, else the default grader for the
+  endpoint's catalog. On the Balanced profile it runs Validated's two models.
+  It was refused ("requires a secondary model") after the models were readied,
+  so a first run could download the discovery model and then stop. The Models
+  line says `(the default)`, and the models screen and the window's models card
+  show the default on the second model's row.
+- **A link in the repository that leads nowhere no longer stops a scan.** A
+  link whose target does not exist, or links that loop, are left out and
+  counted on the excluded-files lines ("left out 2 links: 1 into a .git folder,
+  1 resolving to nothing"), with the links into a `.git` folder, which were
+  left out without a word. Until now one such link anywhere in the repository,
+  inside `node_modules` included, refused the whole scan. A link that leads
+  outside the repository is still refused.
+- **A saved output budget, or a `CS_BUDGET_*` variable, that cannot be used is
+  set aside alone and said once when the command starts**, with the command
+  that removes it, as a saved default is. One that is not a whole number, or is
+  outside 1 to 262144, is set aside and the next value applies; until now one
+  value that was not a whole number set every saved budget aside, a saved 0 or
+  a bad variable was ignored without a word, and a value above the range was
+  used. `init --json` names each one in its row's `saved_problem`, and `init`
+  accepts a save that repairs every damaged budget (`init --reset <name>`, or a
+  new value), where it refused every budget save.
+- **A settings file that cannot be read (its permissions, or a folder in its
+  place) is said once when a command starts**: the run then uses no saved
+  profile, provider, default or budget. It was read as empty without a word.
+- **A `--multi-model` scan sends each call's output schema to any local
+  model.** It sent a schema or JSON mode only to the models in the tool's own
+  list, and left every other local model to the prompt, where the default scan
+  sends its schema to every model. Because the request changes, an unlisted
+  local model's cached multi-model extractions are not found once after
+  upgrading, and each file is extracted again on the first scan that reads it.
+- **The refusals ledger (`refusals.json`) is schema 2.0.0: each row's `rule`
+  field is removed.** It named the internal function that recorded the row,
+  which no setting matched. A row is named by its `verdict`, whose gate,
+  explanation and settings `refusals` and `review --why` give. A ledger
+  written by an earlier version still reads; its `rule` is ignored. A verdict
+  this version does not know is named by the verdict itself. `refusals --json`
+  and `review --why --json` explain a verdict in the same words.
+- **Every `--json` answer prints `<` and `>` as written**, so a next step's
+  `<concept-id>` reads as it does in the terminal, where it was escaped. The
+  same holds for the files a scan writes beside itself, the stored concepts,
+  the refusals ledger, `submit` drafts and the `--progress jsonl` events. A
+  JSON reader decodes both forms to the same value. Every command's `--json`
+  answer now also replaces a model's terminal control characters, as the
+  scan's did.
+- **Next steps say what fits what happened.** `synthesize` with no pattern
+  offers to review the scan's concepts, where it offered "the concepts these
+  patterns combine". `triage` with nothing to do leads with reviewing the
+  scan, where it said "Triage grounded 0 concepts". The scan's review step
+  counts what review lists, documentation concepts shipped with
+  `--characterize-docs` included, as "shipped concepts". No step states a
+  count of zero.
+- **The setup screens:** each screen starts with an empty row, so "Step 1 of
+  4" no longer sits against the line above it. No blank row is kept where the
+  spinner was once it stops. A long total on step 3 (the Selected line) wraps
+  at spaces instead of being cut mid-word. The setup says "first-run setup"
+  only when nothing is saved yet, and "setup" when `init` runs again.
+- **The ready screen no longer shows the command in its card**, where it
+  wrapped and could not be copied in one piece. After `s` starts the scan,
+  "Run it with: <command>" is printed once, on one line, above the scan's
+  output, as `d` already printed it beside the saved plan.
+- **A profile is named with every model it reads files with**, for example
+  "Validated (two-pass) (qwen3-coder:30b + gpt-oss:20b)", in `models`, the
+  "Using saved profile" line and the profile menu. `models` names the
+  recommended profile by its name and models, where it printed its key.
+- **A multi-model scan's agreement line says "2 steps of the multi-model path
+  degraded, each named in agreement.json"**, where it said "2 degraded steps
+  listed under warnings" beside a closing line that counts the warnings the
+  run logged.
+- **`figure draw` and `figure apply` name what a size or layout rule cut**
+  ("3 arrows refused, 2 arrow labels cut"), where they said "1 value cut,
+  refused or merged".
+- **`arc.json` is 1.13.0 and a saved plan 1.5.0**: each estimate adds
+  `tokens_fitted`, whether its source tokens were fitted from the model's
+  recorded calls.
+- **A setting is renamed, and its meaning changed:** `pbd-cache-max-age` is now `cache-max-unused-age`. It is how long an entry of either cache may go unused before a scan removes it, 30 days built in, and 0 keeps every entry for ever. It was how long a multi-model extraction was served (built in 0, and an expired entry stayed on disk). A value saved under the old name is ignored and a scan says so; save one under the new name with `init --cache-max-unused-age <duration>`, and remove the old one with `init --reset pbd-cache-max-age`.
+- Both caches now remove an entry unused for that long when a scan opens them, and an entry a scan reuses counts as used. Until now nothing ever removed an entry of either cache, so both grew with every repository scanned.
+- The audit and cost logs are written readable by you only, and an existing one is tightened the next time it is written.
+- The audit log no longer records the committer's email address in plain text. Its author hash is now the same hash a concept's contributors carry, so one author has one hash in both.
+
+### Fixed
+
+- **When the `go` command is not on your PATH, the license line says so.**
+  It read "1 manifest could not be analyzed, see dependency_map.errors"; it
+  now reads "License check incomplete: the go command was not found on PATH,
+  so the Go module's dependencies were not analyzed". This is the usual cause
+  in the container image and the GitHub Action, which do not include `go`.
+- **A bridge never ships with fewer distinct concepts than
+  `--bridge-min-components`.** An answer that named one concept twice shipped
+  as a two-concept bridge of one concept, an answer naming one real concept
+  beside an unknown id shipped as a bridge of one, and with
+  `--bridge-min-components 3` an answer that narrowed three concepts to two
+  shipped as a pair. Each concept is now counted once, and such an answer is
+  declined and counted in the bridge pass's log line
+  (`too_few_members_declined`), beside the unnamed and unscored ones.
+- **`scan --parallel=false` is refused on a single-model scan**, where it was
+  read and ignored, with the same remedies as `--merge-model` (add
+  `--multi-model`, or drop the flag). `--parallel` given on its own is the
+  default and is never refused.
+- **A multi-model scan whose second model is its discovery model is refused
+  before anything is downloaded or sent**, with a form to give
+  `--secondary-model` another model, and the two are compared as the server
+  names them (`qwen3-coder` and `qwen3-coder:latest` are one model). It was
+  refused after the models were readied, by raw name.
+- **A remote catalog with no default model is refused with a form to give the
+  model** (`--primary-model`, `--secondary-model`, or on `bridges`, `triage`,
+  `synthesize` and `figure draw` `--extract-model`), and a scan refuses it
+  before it reads or clones the repository. Its first step was a re-run with
+  `--verbose` that would be refused the same way. A remote single-model scan
+  under `--skip-review` no longer needs a default grader it never calls.
+- **A `--json` answer that cannot be written is the command's failure**: it
+  exits 1 with an error envelope. Until now a value JSON cannot hold printed
+  nothing and the command exited 0, and `scan --json` printed its human
+  results on standard output instead.
+- **A model answer that broke its format is no longer read as a verdict.**
+  Triage read an empty answer (`{}`, or an object without the field it asks
+  for) as "the concept is not in this file", so a concept could be dropped as
+  not found because of a malformed answer; such an answer now counts as no
+  answer, and a concept no candidate answered stays pending. The batch
+  suggestion, test evidence (`--tests evidence`), TLDR and enriched-summary
+  calls and a `--multi-model` scan's synthesis read the same answers as a
+  successful answer naming nothing; each now counts it as unreadable, which the
+  run already reports for that stage, and the synthesis asks the model to
+  repair it and fails the scan when the repair cannot be read either, where it
+  reported zero concepts.
+- **A valid answer that quotes a code fence is read as it came** in the bridge
+  call and a `--multi-model` scan's synthesis, which stripped fences before
+  reading and so lost a bridge, or spent a second repair call on a repair
+  answer that was never broken. Triage, batch suggestion and test evidence also
+  read an answer wrapped in a fence or after a line of text, which they refused.
+- An answer from an OpenAI-compatible endpoint that was cut off at its output budget now names the budget it was sent with, as a local one does, instead of "the backend default".
+- **`scan --depth N` takes effect on a scan with no coverage flag.** It was
+  accepted and ignored there: the files were batched at the depth derived from
+  their sizes, and the `Depth:` line said so. It now sets the depth on every
+  single-model scan, and the line says it was set.
+- **A model server on this machine that does not answer is said to be down on
+  an OpenAI-compatible scan too.** The scan ends with "Start the model server
+  at ..., or point --base-url at one that is running", exit 3. Until now it
+  told you to describe the model, or, with the model described, failed every
+  discovery batch with general steps.
+- **A multi-model scan whose second model's synthesis named no concept says
+  so.** The agreement line read "4 by the primary only", which looks like the
+  two models disagreeing; it now says the second model's synthesis named no
+  concept, so the shipped concepts are the other model's alone, and
+  `agreement.json` lists it among the steps that degraded.
+- **A `--resume` that is refused names the repository the stopped run read** in
+  its step to run the scan again, where it showed `<repo-url-or-path>`.
+- **The progress heartbeat no longer waits on the disk.** A running scan's
+  status file was synced to disk under the same lock as every line the console
+  prints, so while another program wrote heavily the plain heartbeat, promised
+  every 30 seconds, came up to 47 seconds apart. The status file is still
+  replaced whole, never half-written, and is no longer synced; every other file
+  this program writes still is.
+
+### Window
+
+- A command's rules are listed in the normal colour, and one the form breaks
+  is marked as you fill it in, where all of them showed in the warning colour
+  on an empty form. The saved keys in Settings are no longer shown as a
+  warning either.
+- The models card on the scan form and in Settings no longer repeats the
+  `models` command's next steps while the local model server answers; what to
+  do when it does not still shows. The Running screen no longer repeats its
+  help steps beside the last run's card when nothing is running.
+- A page opened without its sign-in code shows only the banner that says to
+  open it again, where the refusal text also showed under it.
+- All commands shows a command's answer the way every other screen does: its
+  notice, its result, then its next steps.
+- Each row of the Scans table names its scan's id, when it started, and the
+  flags its files were collected with when it recorded any, so several scans
+  of one project can be told apart.
+
 ## [2.0.0] - 2026-10-14
 
 **This release changes the output contract to 2.0.0** (the concept, the bridge
