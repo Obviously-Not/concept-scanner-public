@@ -104,20 +104,20 @@ Hitting an error or empty/thin output? See **[TROUBLESHOOTING.md](docs/troublesh
 Prebuilt images are published to GHCR and Docker Hub:
 
 ```bash
-docker pull ghcr.io/obviously-not/concept-scanner:v1
-# or: docker pull leegitw/concept-scanner:v1
+docker pull ghcr.io/obviously-not/concept-scanner:v2
+# or: docker pull leegitw/concept-scanner:v2
 ```
 
 The scanner runs against your **host Ollama**. Inside a container, `localhost` is the container's own loopback, not the host, so point `--ollama-host` at the host:
 
 ```bash
 # macOS / Windows (Docker Desktop):
-docker run --rm -v "$PWD:/workspace" ghcr.io/obviously-not/concept-scanner:v1 \
+docker run --rm -v "$PWD:/workspace" ghcr.io/obviously-not/concept-scanner:v2 \
   scan /workspace --ollama-host http://host.docker.internal:11434
 
 # Linux: add the host-gateway mapping (or use --network host):
 docker run --rm --add-host=host.docker.internal:host-gateway \
-  -v "$PWD:/workspace" ghcr.io/obviously-not/concept-scanner:v1 \
+  -v "$PWD:/workspace" ghcr.io/obviously-not/concept-scanner:v2 \
   scan /workspace --ollama-host http://host.docker.internal:11434
 ```
 
@@ -138,7 +138,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: Obviously-Not/concept-scanner-public@v1
+      - uses: Obviously-Not/concept-scanner-public@v2
         with:
           provider: openai-compatible
           base-url: <your provider's /v1 URL>   # see PROVIDERS.md
@@ -305,7 +305,7 @@ emitted text passes an output-layer check that keeps legal-statute vocabulary ou
 | `--allow-external-symlinks` | Allow symlinks pointing outside the repository (skips symlink-escape validation) |
 | `--ollama-host` | Ollama API URL (default `http://localhost:11434`) |
 | `--local-only` | Refuse to run unless the model server is on this machine (`localhost` or a loopback address), judged from its host, and refuse a model a local Ollama runs on another machine, before anything is sent; give it on every run, since it is never saved. See [PROVIDERS.md](docs/providers.md#privacy) |
-| `--parallel-batches` | How many requests a run keeps in flight. By default one at a time against a model server on this machine (`localhost` or a loopback address) and 4 against a remote endpoint; a value you give, or save with `init` (whose picker asks for one, opening on that same rule and saving a number only when you change it), holds wherever the server is. The model server serves as many at once as it has slots (Ollama's `OLLAMA_NUM_PARALLEL`, default 1) and queues the rest, so on a default server more is not faster. On a server with several slots, concurrent requests share the work and a scan is then **not byte-reproducible** run to run; one at a time is what gives the same output twice. `models.json` beside each scan records the server's slots when the server runs on this machine and its log can be read. A scan run one at a time also reuses the answers of earlier scans to identical discovery requests (see "Reusing discovery answers") |
+| `--parallel-batches` | How many requests a run keeps in flight. By default one at a time against a model server on this machine (`localhost` or a loopback address) and 4 against a remote endpoint; a value you give, or save with `init` (whose picker asks for one, opening on that same rule and saving a number only when you change it), holds wherever the server is. The model server serves as many at once as it has slots (Ollama's `OLLAMA_NUM_PARALLEL`, default 1) and queues the rest, so on a default server more is not faster. On a server with several slots, concurrent requests share the work and a scan is then **not byte-reproducible** run to run; one at a time is the setting at which a scan on this machine was measured repeating its discovery answers, though a model's answers are not guaranteed to repeat and a classification label can still differ. `models.json` beside each scan records the server's slots when the server runs on this machine and its log can be read. A scan run one at a time also reuses the answers of earlier scans to identical discovery requests (see "Reusing discovery answers") |
 | `--verify-cache` | Ask every discovery request again instead of reusing its stored answer, after unloading the model, and report whether each stored answer reproduced; one that did not is removed, and the scan exits 1. A scan in which the cache is off (see "Reusing discovery answers") checked nothing, so it also exits 1 and says why |
 | `--full-history` | Fetch full git history for richer file provenance |
 | `--json` | Machine-readable `{ data, next_steps, notice }` envelope (see "Machine-readable output") |
@@ -566,12 +566,16 @@ the batches whose files changed. Each scan says what it did:
 Discovery cache: 5 answer(s) reused, 1 asked, 0 answer(s) naming no concept asked again; about 1m32s of model time and 2357 output tokens saved; 1 asked again to check: 1 reproduced, 0 differed and were removed.
 ```
 
-- **Only scans run one batch at a time reuse answers.** Run that way, a scan was
-  measured giving exactly the same answers every time; with several batches at
-  once it was not. A scan with several batches in flight (the default of 4 on a
-  remote endpoint, or a number you gave or saved) reuses nothing and its notice
-  says so. Since a local scan now runs one at a time unless told otherwise, it
-  reuses answers by default.
+- **Only scans run one batch at a time reuse answers.** Run that way, a scan on
+  this machine was measured repeating its discovery answers; with several batches
+  at once it was not. A model's answers are not guaranteed to repeat, which is why
+  a scan that reuses answers checks one (below), and a concept's classification
+  label can still differ between two such scans (see "Two scans of the same code
+  give different results" in [TROUBLESHOOTING.md](docs/troubleshooting.md)). A scan
+  with several batches in flight (the default of 4 on a remote endpoint, or a
+  number you gave or saved) reuses nothing and its notice says so. Since a local
+  scan now runs one at a time unless told otherwise, it reuses answers by
+  default.
 - **Every scan that reuses answers checks one**: it asks that request again,
   after unloading the model, and compares. An answer that does not reproduce is
   removed and named in the notice, and the rest of that scan asks every request

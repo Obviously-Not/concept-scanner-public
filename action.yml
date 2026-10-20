@@ -35,12 +35,13 @@ inputs:
     required: false
     default: ""
 
-# Docker action (Linux runners only). Pins the moving :v1 image tag, so `uses:
-# ...@v1` always runs the latest v1 image. Keep the action's release major tag
-# and this image tag moving together (both v1); a specific action release may
-# instead pin an exact :X.Y.Z image (goreleaser strips the leading v from the
-# exact tag, so v1.2.3 publishes :1.2.3 + :v1).
+# Docker action (Linux runners only). It runs the image's moving major tag, so
+# `uses: ...@vN` runs the newest vN image. Each release writes this tag from
+# its own version (:vN for a stable release, the exact :X.Y.Z-pre for a
+# pre-release), so it names the major that release shipped. Until 2026-10-16
+# it was written by hand, and v2.0.0 was published with :v1, so the @v2
+# action ran the 1.3.0 image.
 runs:
   using: "docker"
-  image: "docker://ghcr.io/obviously-not/concept-scanner:v1"
+  image: "docker://ghcr.io/obviously-not/concept-scanner:v2"
   entrypoint: "/usr/local/bin/action-entrypoint.sh"

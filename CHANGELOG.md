@@ -6,6 +6,22 @@ All notable changes to concept-scanner are recorded here. The format follows
 
 ## [Unreleased]
 
+## [2.1.1] - 2026-10-20
+
+### Fixed
+
+- **The GitHub Action runs the image of the major it was released as.**
+  `uses: Obviously-Not/concept-scanner-public@v2` ran the 1.3.0 image: the
+  action named the image tag `:v1`, and 2.0.0 was released without moving it.
+  Each release now writes the action's image tag from its own version (`:v2`
+  for a 2.x release, the exact version for a pre-release). A workflow pinned
+  to `@v2.0.0` or `@v2.1.0` keeps running 1.3.0, since those tags do not move;
+  use `@v2` or this release's tag. 2.1.0 was released without this fix.
+- **`update` in the container image names the newest release's image.** It
+  said to `docker pull ...:v1`, which from 2.0.0 is a move back to 1.3.0; it
+  now names the newest release's major. The README, the troubleshooting guide,
+  `docker-compose.yml` and the release notes name `:v2` and `@v2`.
+
 ## [2.1.0] - 2026-10-16
 
 **This release changes no part of the output contract** (the concept, the bridge and the scan result keep

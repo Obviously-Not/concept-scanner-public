@@ -1013,8 +1013,9 @@ exactly as it was.
   agent's terminal (the message names which). Run it yourself in a terminal.
   `update --json` always checks without installing.
 - **"this copy runs from the container image"**: pull the new image instead,
-  `docker pull ghcr.io/obviously-not/concept-scanner:v1`. A GitHub Action on
-  `@v1` already runs the latest stable release.
+  `docker pull ghcr.io/obviously-not/concept-scanner:v2` (the `update` step
+  names the newest release's major). A GitHub Action on
+  `Obviously-Not/concept-scanner-public@v2` runs the newest 2.x image already.
 - **"cannot write beside ..."**: the folder holding the binary is not writable
   by you, which `update` now finds before downloading anything. It never asks
   for elevated rights; reinstall with the install script (the command it
