@@ -4,7 +4,207 @@ All notable changes to concept-scanner are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and releases are the
 `v*` tags in this repository.
 
-## [Unreleased]
+## [3.0.0] - 2026-10-21
+
+**This release renames five commands, six flags, 30 settings and budgets, and seven keys of
+`--json` answers, with no aliases: a script or workflow that names an old one
+stops.** An old name typed is refused, runs nothing, and its first next step is
+the same line in the new names. The renames change no field name of the output
+contract, no prompt and no cost-log row. Every renamed word, with what it
+replaces, is in the words table this program ships (`words.go`).
+
+**A concept's lines are derived from the code, never written by a model.** The
+concept's schema is 2.1.0 (additive: a line range is null when there is none,
+and provenance says which declarations the lines cover and what the description
+check found); `locate` no longer asks a model for lines, and a prompt names a
+concept's location by its file alone.
+
+### Changed
+
+- **A concept's lines are the span of the declarations its own text names**, read after every model call, never a
+  range a model wrote: a Go file's from its syntax tree, and a TypeScript, JavaScript or Python file's by pattern,
+  whose declaration ends agreed with tree-sitter's for 41,325 of 41,338 declarations in real code. The span encloses
+  every named declaration while it is no longer than 200 lines (`--lines-max-span`, saved with `init`), else it is
+  the first function or method named in file order (an arrow or function expression held in a variable counts), or
+  the first declaration when the concept names no function: the first declaration alone was often a type or a
+  prompt at the top of the file. Checked against two answer keys, it moved three concepts onto a key's lines and two
+  off, the two where the mechanism is a type the key cites. A TypeScript or JavaScript declaration never ends on a
+  comment line: one whose line ends in an operator, then a comment, then the operand, ends at the operand. A concept that names no declaration, or cites a file in another language, ships with
+  none. On stored scans replayed with no model: 204 of 209 concepts of this repository, 34 of 38 of cobra's, and 908
+  of 980 of a TypeScript repository's. A range a model wrote anyway is discarded and counted in
+  `line_ranges_zeroed`, which until now counted only a range outside its file. A TypeScript, JavaScript or Python
+  concept is attributed to its authors over those lines too, where only Go concepts were before.
+- **A word found only in a concept's name no longer names a declaration.** A concept called "Split Cache
+  Memoization" mentions the idea of a split, not `type Split string`: a plain word counts when the concept's
+  summary, technical approach, mechanism evidence or components hold it too, or when the name gives it as code
+  (code-shaped, or in backticks). On stored scans this moves 3 of 247 Go concepts' lines from a type at the top of
+  the file to the function their text names, and changes their paired tests' order.
+- **The description check sees ALL_CAPS constants and names with a digit or an acronym inside**
+  (`MAX_STALE_RETRIES`, `pass2Opts`, `LLMUsageReport`), which it read as prose before. On stored scans: 9 of 980
+  TypeScript concepts' verdicts change, 7 to grounded and 2 to absent, and none of 247 Go concepts'.
+- **Concept schema 2.1.0.** `location.start_line` and `end_line` are null when a concept has no lines, where 0 said
+  so before; `provenance.lines_from` names the declarations its lines cover and how they were read; and
+  `provenance.description_grounding` carries `grounding.json`'s verdict on whether the names its description gives
+  are in the file it cites (`grounded`, `partial`, `absent`, `not_covered`), with the names checked, so a consumer
+  can tell it from `grounding`, which says only that the file exists.
+- **No prompt shows a line number.** Characterization and `--tests evidence` name a concept's location by its file,
+  and `locate` asks for `best_location` as a file only. Prompts for a concept with no lines are the same bytes as
+  before; a concept that carried a range is named without it.
+- **Attribution blames every declaration a concept names**, as does the scan's audit entry, never one chosen range;
+  test pairing reads no range at all, every concept being paired on its file with the tests of what it names first
+  (`tests.json` 2.6.0: `range_from` is `description` or `file`).
+- **`grounding.json` 1.1.0** has a `lines` section: how each shipped concept got its lines, or why it has none, with
+  each file's hash. `locate` rewrites it for the concepts it moves.
+- **One hash of a file's content**, over the whole file, everywhere a record hashes a source file (`arc.json`,
+  `union.json`, `unfinished.json`, the audit entry). A file over the read cap recorded by an earlier version reads
+  as changed once.
+- **Removed: the extraction record's sections and evidence lines** (`EvidenceLines`, `Sections` and their
+  counters), which nothing read, from the multi-model path's compressed context.
+- **Test pairing and attribution read the declarations a concept names in its components too.** One matcher, a
+  declaration whose name is a whole word of the concept's name, summary, technical approach, mechanism evidence or
+  components, replaces the code-shaped filter both used, so a concept whose only named declaration is in its
+  components is paired by it and, in Go, attributed over that declaration's lines: `lines_authored` and the
+  contributors change for such a concept, a value and not a shape. On a stored scan of this repository 197 of 200
+  concepts were paired from what they name, where 175 were.
+- **Breaking: five commands renamed.** `bridges` is `combine`, `triage` is
+  `locate`, `synthesize` is `patterns`, `submit` is `export`, and `refusals` is
+  `held`.
+- **Breaking: six flags renamed.** `--bridges` is `--combinations`,
+  `--no-bridges` is `--no-combinations`, `--bridge-min-components` is
+  `--combination-min-components`, `--no-triage` is `--no-locate`,
+  `--synthesize` is `--patterns`, and `--parent` is `--after`, which names the
+  scan whose history a run continues (a read of more files, or with
+  `--changed` a re-read of what changed).
+- **Breaking: 27 settings and three budgets renamed**, each with its `init` flag and
+  its flag on the commands that read it: `bridge-*` is `combination-*`,
+  `triage-*` is `locate-*`, the purpose finder's `locate-*` is
+  `behaviour-paths-*`, Pass 5's `combination-*` is `pattern-*`,
+  `characterized-score-floor` is `characterized-min-score`,
+  `min-synthesis-score` is `min-pattern-score`, and the budgets `bridge`,
+  `triage` and `locate-paths` are `combination`, `locate` and
+  `behaviour-paths` (`--budget-*`, `CS_BUDGET_*`). A value saved under an old
+  name is set aside and named on every run that reads it; `init --reset
+  <old-name>` removes it.
+- **Breaking: seven keys of `--json` answers renamed.** In `review --json`,
+  `widen` is `read_more`, `lineage_header` is `history_header`, `lineages` is
+  `histories`, and `bridges` and `bridge_count` are `combinations` and
+  `combination_count` (also in `combine --json`); in `init --json`,
+  `defaults` and `defaults_problem` are `advanced_settings` and
+  `advanced_settings_problem`. `held --json` lists each held-back row with its
+  verdict and drops `by_verdict`.
+- **Plainer words everywhere a person reads them**, in the terminal and the
+  window alike: a combination (was bridge), a scan history (was lineage), the
+  first read and a read of more files (were ring and widening), re-read
+  changes (was rescan), held back (was refusals), minimum score (was score
+  floor), components numbered c1, c2 (were parts), advanced settings (were
+  defaults), and a concept's location as verified, corrected, found or
+  unconfirmed (were grounded, repaired, rescued or pending). The window's
+  scan history screen is at `#/history`.
+- A scan stored before this release still prints next steps that run: the
+  flags its `file-set.json` recorded are read in their new names. A stopped
+  run's `unfinished.json` from an earlier version is refused, as it was across
+  every version.
+- The window's controls have their own border colour, and its light theme's
+  accent is a little darker, so every colour it draws meets WCAG AA contrast
+  in both themes.
+- **`scan --verify-cache` exits 0 when a stored discovery answer did not
+  reproduce.** A model's answers are not guaranteed to repeat, so a difference
+  is not a failure: the stored answer is still removed and counted (in the
+  `Discovery cache:` line, the `--json` notice and `status.json`), and the rest
+  of the scan still asks every request again rather than reuse one. A
+  `--verify-cache` scan in which the cache was off checked nothing, and still
+  exits 1.
+
+### Added
+
+- **`show <scan-id> <concept-id>` says where a concept lives, and opens it.** The file on this machine, its lines and
+  the declarations they cover, the commit and branch of the pass that found the concept, whether the file has changed
+  since (by the hash the scan recorded), and a link to it at the scanned commit on GitHub, GitLab or Bitbucket, with
+  whether that commit is on a remote this checkout knows. `--open` opens the file at its lines in the editor saved
+  with `init --editor` (one argument per value, naming the file with `{file}` and the line with `{line}`), or else the
+  system's text editor on macOS and Windows; Linux needs one saved. Only a source or documentation file inside the
+  repository the scan read is opened, and only for a scan this machine recorded. `--web` opens the link. The concept
+  view (the terminal's review, `review --json`'s `concept_sections`, the window's card and `SUMMARY.md`) shows the
+  same place: the declarations, the commit and the link. The window's card has **Open in editor** and **View on the
+  host**, each shown only where it can run, and the review key `o` presses Open in editor. `init --reset editor`
+  removes the editor; `init --reset all` keeps it.
+- **A scan records what differed from its commit** (`local.json` 1.1.0, never exported): the files its shipped
+  concepts cite that had uncommitted edits when it started, and the commit at its end beside the one it started at,
+  which `show` says beside the link.
+- **A summary of every scan, in one value everywhere it is read**: what was
+  found, shipped and held back, the files and share read, the models by role,
+  where the code was sent, how long it took and what it cost. It opens the
+  terminal's result block, is the closing line and the GitHub Actions summary,
+  heads `SUMMARY.md`, is the window's finished-scan card, is written beside
+  the scan as `summary.json` (schema 1.0.0), and is the top-level `summary`
+  key of `scan --json`, beside `data`, `next_steps` and `notice`. The notice no
+  longer repeats the cost sentence.
+- **`SUMMARY.md` is written again whenever a concept or its figure changes**
+  (a review decision, `figure draw`, `figure apply`, `export`, `locate`,
+  `combine`), its header read from `summary.json`, so its counts never go
+  stale. It counts found and shipped apart, lists a documents-only scan's
+  concepts, and escapes the model's text. `export`, `figure draw`, `figure
+  apply` and `locate` take the confidence bands' flags, since they write it.
+- **A concept is laid out like a specification**, in the same order in the
+  terminal review, the window's card, `SUMMARY.md` and `review --json`
+  (`concept_sections`): its technical field, summary, Figure 1, detailed
+  description (how it works, its components c1, c2 and how they interact, its
+  inputs and outputs), what is unusual, comparable techniques ("not answered"
+  or "none named"), and where it lives in the code, then its engineering
+  signals. A figure's boxes carry their component's number, its Mermaid source
+  opens with `accTitle` and `accDescr`, and `review --json`, `figure draw
+  --json` and `figure apply --json` give its boxes and arrows as words.
+- **A suggested first read.** The setup screens and `scan --dry-run` suggest
+  how much to read first from the number of scannable files: every file when
+  there are at most N, otherwise N average files' worth of the code by size,
+  the most relevant first, where N is set per model profile (Fast 14,
+  Balanced 12, Validated 4, Thorough 10; `suggested-read-files-<profile>`,
+  adjustable like every value). A read of more files reads N more files'
+  worth. `scan --dry-run --json` gives `suggested_coverage`, `universe_files`
+  and `universe_bytes` (saved plan schema 1.6.0) and a next step to plan the
+  suggested read. A scan with no coverage flag outside the screens still
+  reads every file.
+- **`held <scan-id> --set <ref>=right|wrong [--note ...]`** records whether a
+  hold was right, the first way to say so without editing the ledger. `held`
+  reads every pass of a scan history, names each row by `<pass>/<id>`, and
+  names any pass it could not trust.
+- **A reason on a rejection**, offered and never required: `review --set
+  <id>=rejected --reason duplicate|routine|wrong-location|inaccurate|other
+  [--note ...]`, asked after R at a terminal, and offered in the window. It is
+  kept beside the scan in `review.json` (schema 1.0.0), never on the concept,
+  and `review --json` gives it as `reject_reasons`.
+- **Review moves faster in the window**: j and k move between concepts, a, r
+  and s approve, reject and skip the one in focus, several selected concepts
+  are decided in one `review --set`, and a Held back tab lists what the scan
+  held back, with why. The terminal review lists the held-back concepts after
+  its decisions.
+- **The window tells a screen reader what a sighted person sees**: the
+  section shown and each pressed filter are announced, a running scan's stage
+  (and only its stage) is read as it changes, and a figure is given as its
+  components and arrows in words. Its header keeps one row of sections down
+  to 960 pixels wide and gives them a row of their own below that.
+
+### Removed
+
+- The settings `first-ring-points` and `widen-step-points`, replaced by the
+  suggested read per model profile. A saved or typed one is refused or set
+  aside, never carried over as a number of files.
+- `held`'s instruction to edit the ledger by hand, replaced by `held --set`.
+
+### Fixed
+
+- **A concept that names a private Python declaration only in its name gets
+  its lines.** A name starting with an underscore (`_REGIONS`,
+  `_looks_cut_at_start`) was read as a plain word, so a concept called
+  "Region table _REGIONS" did not count as naming `_REGIONS` and had no lines.
+  It is now read as code by the name test alone; which names the description
+  check looks for is unchanged.
+- **`export` pairs a renamed file's path with the commit that has it.** A concept whose file the scan history
+  followed through a rename was exported at the path the file has now with the commit of the pass that found it, a
+  path that did not exist at that commit; it now carries the commit of the pass that saw the rename.
+- The warning a scan prints when its own sampled check of the discovery cache
+  finds an answer that did not reproduce no longer names `--verify-cache`,
+  which the scan was not given.
 
 ## [2.1.1] - 2026-10-20
 

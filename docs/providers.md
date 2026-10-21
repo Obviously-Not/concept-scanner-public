@@ -107,7 +107,7 @@ concept-scanner init --provider openai-compatible \
 concept-scanner scan ./my-project
 ```
 
-The same `--provider` / `--base-url` / `--primary-model` flags work on the `bridges` and `triage` commands. **Semantic batching** (Avenue B) uses the same provider and model as discovery; no additional configuration is required.
+The same `--provider` / `--base-url` / `--primary-model` flags work on the `combine` and `locate` commands. **Semantic batching** (Avenue B) uses the same provider and model as discovery; no additional configuration is required.
 
 ## Per-pass models (remote)
 
@@ -138,9 +138,9 @@ lists them for (OpenRouter, today), both have defaults:
   concept.
 
 **What the drafting model is spent on, because it is more than its name
-suggests.** It is not only the synthesis passes. It is read by
-**characterization, which is one call per concept**, by triage, by test-evidence
-extraction, by bridges and by synthesis. So on a remote provider a scan that
+suggests.** It is not only Pass 3 and Pass 5. It is read by
+**characterization, which is one call per concept**, by locating files, by
+test-evidence extraction, by Pass 3 (combinations) and by Pass 5 (patterns). So on a remote provider a scan that
 names a cheap `--primary-model` and no `--draft-model` still sends the bulk of
 its calls to the paid default above. Pass `--draft-model` to choose it yourself,
 or pass your primary's id to keep everything on one model:
@@ -156,8 +156,8 @@ Until 2026-10-06 four `--draft-model` help strings said the default was "same
 as primary", which was true locally and wrong on every remote run.
 
 `--multi-model` reads every file with two models in parallel and merges each
-file's two readings, then has both models synthesize concepts and merges the two
-lists, recording which concepts both models named on each concept
+file's two readings, then has each model draw up its own list of concepts and
+merges the two lists, recording which concepts both models named on each concept
 (`model_agreement`) and in `agreement.json` beside the scan; a single-model scan
 carries no `model_agreement`. `agreement.json` also says how the two readings
 of each file compared, which model server each step sent your code to and
@@ -243,7 +243,7 @@ with `--two-phase` (or `CS_TWO_PHASE=1`); the Phase-2 extractor is `--extract-mo
 (default: `CS_EXTRACT_MODEL`, else the saved extract model on a local provider,
 else `gpt-oss:20b` locally and the Pass 2 model on a remote provider). Off by default while it is A/B'd;
 when on, the completion fallback becomes a dormant safety net. It currently covers
-the single-model path plus characterization and bridge synthesis; multi-model
+the single-model path plus characterization and finding combinations; multi-model
 Pass 1 discovery is not yet two-phase. The freeform distill is slower per batch,
 so `--two-phase` raises the per-request timeout floor to 30 minutes (override with
 `--timeout`) so large batches finish instead of being killed mid-distill.
@@ -251,7 +251,7 @@ so `--two-phase` raises the per-request timeout floor to 30 minutes (override wi
 ## Cost before a scan, and spend ceilings
 
 **A remote scan says what it will cost before it spends.** The setup screens,
-`scan --dry-run` (and its `--json`, per ring: `discovery_usd`,
+`scan --dry-run` (and its `--json`, for each read it plans: `discovery_usd`,
 `whole_low_usd`, `whole_high_usd`, `prices_as_of`, `prices_stale`,
 `money_basis`, `whole_money_basis`, `ceiling_warnings`) and a line printed
 before a remote scan's first model call all give an estimate in US dollars. It
@@ -278,8 +278,8 @@ reported cost where the endpoint gave one, else the shortlist's listed price,
 and `null` only when a call that read or wrote something had neither (a call
 that read and wrote nothing, such as one the endpoint rejected, costs 0
 whatever its model); a priced scan's cost line says "reported or listed
-prices". It includes Pass 5 whichever command ran it (`scan --synthesize`, or
-`synthesize`, which adds its run's Pass 5 spend to the stored scan's cost), and
+prices". It includes Pass 5 whichever command ran it (`scan --patterns`, or
+`patterns`, which adds its run's Pass 5 spend to the stored scan's cost), and
 `synthesis_cost.cost` is Pass 5's own part. The calls the setup screens make
 before a scan count in its running cost and toward the spend ceilings' next
 check. A reported cost is read as US dollars, which has not yet been
@@ -344,24 +344,24 @@ whose default is already 16384). Every budget is changeable, with precedence
   the default, means not given.
 - **Environment:** `CS_BUDGET_<NAME>`, uppercase with underscores
   (`CS_BUDGET_MERGE_REMOTE=24000`).
-- **Saved default:** `concept-scanner init --budget-<name> N` saves it to the
+- **Saved:** `concept-scanner init --budget-<name> N` saves it to the
   `"budgets"` section of `~/.concept-scanner/settings.json` (its keys are
   lowercase with underscores, `merge_remote`) for every command that reads it,
   and `0` removes it; the window's Settings screen does the same.
   `concept-scanner init --json` lists every budget with its value, where the
   value came from and the commands that read it.
 
-Names: `characterization`, `completion`, `triage`, `figure`, `warmup`,
+Names: `characterization`, `completion`, `locate`, `figure`, `warmup`,
 `synthesis`, `synthesis-repair`, `pass5`, `context-fit`, `pbd-extract`,
 `merge-local`, `merge-remote`, `pass2`, `discovery`, `batch-suggest`,
 `distill`, `extract`, `enrich-tldr`, `enrich-match`, `enrich-summary`,
-`test-evidence`, `project-intent`, `locate-paths`, `bridge`. A value from 0 to 262144 is
+`test-evidence`, `project-intent`, `behaviour-paths`, `combination`. A value from 0 to 262144 is
 accepted. `concept-scanner init --reset <name>` removes a saved budget too. A
 saved budget or a `CS_BUDGET_*` variable that is not a whole number from 1 to
 262144 is set aside, alone, and said when a command that reads it starts: the
 next value in the order above applies, and `init --json` names it.
 
-## Advanced: defaults
+## Advanced settings
 
 Besides the output budgets, a value this program would otherwise take as built
 in can be changed: about 330 of them (the gates on what ships, Pass 3 and Pass
@@ -373,16 +373,17 @@ except `default-remote-context-cap`, which `CS_REMOTE_CONTEXT_CAP` still sets,
 between a flag and a saved value.
 
 - **One run:** `--<key> N` on each command whose run reads it, for example
-  `concept-scanner scan <path> --intent "<purpose>" --coverage 30
-  --page-rank-damping 0.7`. These flags are hidden from `--help`;
+  `concept-scanner scan <path> --intent "<purpose>" --dry-run
+  --suggested-read-files-balanced 20 --page-rank-damping 0.7`. These flags are hidden from `--help`;
   `concept-scanner help --json` lists each with its range, in the flag's
   `setting`.
 - **Saved:** `concept-scanner init --<key> N` writes the `"defaults"` section
   of `~/.concept-scanner/settings.json`, and the window's Settings screen does
-  the same. `0` is a real value for many defaults, so it does not remove one:
-  `concept-scanner init --reset <key>` does, and `init --reset all` removes
-  every saved default and output budget this version knows. A saved key it
-  does not know is ignored, with a note on the runs that read defaults, and
+  the same. `0` is a real value for many of these settings, so it does not
+  remove one: `concept-scanner init --reset <key>` does, and `init --reset all`
+  removes every saved advanced setting and output budget this version knows. A
+  saved key it does not know is ignored, with a note on the runs that read
+  advanced settings, and
   removed only by name: one an earlier version had and this one removed
   (`default-concurrency` and `default-remote-concurrency`, whose work
   `--parallel-batches` does, and `native-request-timeout`, whose work
@@ -396,7 +397,7 @@ between a flag and a saved value.
 
 ## Privacy
 
-Local Ollama keeps your code on your machine (no API keys, no cloud calls). A remote provider **sends your source to that endpoint**. For proprietary code, prefer local Ollama or an endpoint you control. A concept's own file is sent for characterization only when the scan read it: a file that `--exclude`, `--only`, a dropped folder, or the documents and tests settings leave out is never sent, even when a concept names it. With `--tests evidence`, a test beside a concept's file is sent only when the scan would have read it had tests been a source: a test outside `--only`, matched by `--exclude`, or in a dropped folder is never sent. `triage` sends candidate files from the scan's own file set.
+Local Ollama keeps your code on your machine (no API keys, no cloud calls). A remote provider **sends your source to that endpoint**. For proprietary code, prefer local Ollama or an endpoint you control. A concept's own file is sent for characterization only when the scan read it: a file that `--exclude`, `--only`, a dropped folder, or the documents and tests settings leave out is never sent, even when a concept names it. With `--tests evidence`, a test beside a concept's file is sent only when the scan would have read it had tests been a source: a test outside `--only`, matched by `--exclude`, or in a dropped folder is never sent. `locate` sends candidate files from the scan's own file set.
 
 **Keeping code on this machine.** Pass `--local-only` to any command that calls a model, and it refuses before sending anything (exit 1) unless the model server is `localhost` or a loopback address. It judges the `--ollama-host` or `--base-url` host, never the provider: a local Ollama on another machine of your network is refused, and an OpenAI-compatible server on loopback (LM Studio, llama.cpp, vLLM, Ollama's own `/v1`) is allowed. It is never saved and no environment variable or `.env.local` sets it, so a script that relies on it passes it on every run. It also asks a local Ollama, before the first request, whether it runs each model on this machine, and refuses one it forwards elsewhere (a cloud model after `ollama signin`, which Ollama reports as `remote_host`), naming the model, its flag and the host; if a server says so only in an answer, the run stops after that one request and says the prompt left the machine. It cannot ask an OpenAI-compatible server on this machine that is not Ollama, and says so; a model a server forwards without saying so passes.
 

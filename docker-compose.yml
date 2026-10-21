@@ -40,7 +40,7 @@ services:
     # Moving major tag, matching action.yml and the README pull examples. Each
     # release publishes the exact :X.Y.Z and the moving :vX; there is no
     # :latest, so this names the newest release's major.
-    image: ghcr.io/obviously-not/concept-scanner:v2
+    image: ghcr.io/obviously-not/concept-scanner:v3
     depends_on:
       ollama:
         condition: service_healthy

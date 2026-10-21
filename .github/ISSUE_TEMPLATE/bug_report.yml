@@ -85,7 +85,7 @@ body:
   - type: checkboxes
     id: hygiene
     attributes:
-      label: Before submitting
+      label: Before you file this
       options:
         - label: I checked TROUBLESHOOTING.md and this is not one of the known recoveries.
           required: true

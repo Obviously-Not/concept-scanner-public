@@ -71,6 +71,6 @@ body:
     id: other
     attributes:
       label: Anything else
-      description: Triage burden (too many/few concepts), classification calls, or general impressions.
+      description: Review burden (too many or too few concepts), classification calls, or general impressions.
     validations:
       required: false

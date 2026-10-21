@@ -43,5 +43,5 @@ inputs:
 # action ran the 1.3.0 image.
 runs:
   using: "docker"
-  image: "docker://ghcr.io/obviously-not/concept-scanner:v2"
+  image: "docker://ghcr.io/obviously-not/concept-scanner:v3"
   entrypoint: "/usr/local/bin/action-entrypoint.sh"

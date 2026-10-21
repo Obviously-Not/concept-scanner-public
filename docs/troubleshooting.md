@@ -118,8 +118,8 @@ refused before anything runs or is saved, naming the range.
 **Fix:** give a value inside the range. The refusal's next steps name
 `concept-scanner help <command> --json`, which lists every flag's range, and,
 for a value `init` lists, `concept-scanner init --json`. A `0` on `--timeout`,
-`--parallel-batches`, `--bridge-max-components`, `--bridge-max-candidates`,
-`--triage-max-candidates` or `--triage-min-keywords` used to mean the built-in
+`--parallel-batches`, `--combination-max-components`, `--combination-max-candidates`,
+`--locate-max-candidates` or `--locate-min-keywords` used to mean the built-in
 value and is now outside the range: leave the flag out instead, and the run
 takes the value saved with `init`, else the built-in one.
 
@@ -135,7 +135,7 @@ when nothing changed.
 **Fix:** nothing, if you meant it. Otherwise drop the flag, run
 `concept-scanner init --reset <key>`, or unset the variable.
 
-## "the saved defaults name ..., which this version does not have"
+## "the saved advanced settings name ..., which this version does not have"
 
 **Cause:** the `"defaults"` section of `~/.concept-scanner/settings.json` holds
 a key this version has no value for: one an earlier version had and this one
@@ -157,12 +157,12 @@ leaves it, because a key this version does not know may be a newer version's.
 `concept-scanner init --max-repo-size N`. Neither can be set by a scanned
 repository's `.env.local` or data directory.
 
-## "the saved defaults ... cannot be read"
+## "the saved advanced settings ... cannot be read"
 
 **Cause:** a value in the `"defaults"` section of
 `~/.concept-scanner/settings.json` is the wrong kind or outside its range, so
 none of the section is used and the built-in values apply to that run.
-`concept-scanner init --json` names the problem in `defaults_problem`.
+`concept-scanner init --json` names the problem in `advanced_settings_problem`.
 
 **Fix:** `concept-scanner init --reset <key>` removes a value that cannot be
 read, and `concept-scanner init --<key> N` replaces it with one that can; either
@@ -324,7 +324,7 @@ tokens.
 
 ## "the server cut the prompt of a call": the run stopped
 
-**Symptom:** a scan, `bridges`, `triage`, `synthesize` or `figure draw` stops
+**Symptom:** a scan, `combine`, `locate`, `patterns` or `figure draw` stops
 with exit code 1 and an error saying the server cut the prompt of a call.
 
 **Cause:** the model server applied a smaller context window than the one this
@@ -348,11 +348,11 @@ at least 32k tokens. Then run the command again.
 
 Several distinct causes, in order of likelihood:
 
-1. **Everything found was scored below the distinctiveness floor and held back.**
+1. **Everything found was scored below the minimum distinctiveness score and held back.**
    The summary says how many were also classified `textbook`. Re-run with
-   `--include-textbook` to include them, or change `characterized-score-floor`.
+   `--include-textbook` to include them, or change `characterized-min-score`.
 2. **A verbose frontier model was the multi-model primary on a thin repo.** Very
-   capable models can synthesize an empty set on small inputs. Use a lighter
+   capable models can produce an empty set on small inputs. Use a lighter
    primary model (see "Choosing a model" in the [README](../README.md)), or scan a
    larger, more substantive repository.
 3. **The repository's core was excluded.** See "Results look thin or wrong"
@@ -404,7 +404,7 @@ before the failure (`done`), and the rest, unclassified (`pending`), with the
 batch that failed (`step` of `steps`), and what a resume needs: discovery as it
 ran, every batch Pass 2 finished, a hash of every collected file, the models
 with the weights each name pointed at, and the scan's settings. It is not a
-scan: `review` and `submit` do not see it.
+scan: `review` and `export` do not see it.
 
 **Fix:** resume it. The error's first next step is the exact command,
 `concept-scanner scan <path> --resume <run-id>` with the flags that make the
@@ -457,23 +457,25 @@ If the summary says files were left "outside this scan's coverage", the scan
 read part of the repository on purpose (see the next section), and `arc.json`
 beside the scan lists which files.
 
-## Reading part of a repository: setup screens, `--coverage` and `--parent`
+## Reading part of a repository: setup screens, `--coverage` and `--after`
 
 **"Note: no setup screens (...), so this scan reads every file."** The screens
 run only with a person at a terminal and a live display. A coding agent, CI,
 `--json`, `--no-interactive`, `--progress plain`, a redirected stream or a
 background job turns them off, and the note names which. The scan then reads
 every file, as before; to read part of the repository first without the
-screens, pass `--intent "..."` or `--intent-from-docs` with `--coverage 30`.
+screens, pass `--intent "..."` or `--intent-from-docs` with `--dry-run`, which
+suggests how much to read first from the repository's size and your model
+profile, and whose next step plans that read.
 
-**"--coverage 30 reads part of the repository, outward from its purpose, and
+**"--coverage N reads part of the repository, outward from its purpose, and
 needs one."** A coverage below 100 needs a purpose to rank by: pass `--intent`,
-`--intent-file` or `--intent-from-docs`, or `--parent` to widen an earlier scan.
+`--intent-file` or `--intent-from-docs`, or `--after` to read more after an earlier scan.
 
 **"... this run has none: no document describing the project was found"** (or
-"locate kept no path for any behaviour", or "the folder tree does not fit the
+"... kept no path for any behaviour", or "the folder tree does not fit the
 model's window"). With nobody at the terminal, a partial coverage with no
-centre is refused rather than widened to every file, so a run asked to read
+centre is refused rather than turned into a read of every file, so a run asked to read
 30% never reads, and pays for, the whole repository. Type the purpose with
 `--intent`, or run with `--coverage 100`.
 
@@ -489,8 +491,8 @@ leaves it. Nothing is ever opened because a model named it; the pick is
 counted in `intent.json` and ignored.
 
 **"folders only, N deep" in `intent.json`.** The repository's file list was too
-long for the model's window, so the locate call was sent its folders down to
-that depth instead, and the model picked folders. Each folder pick's weight is
+long for the model's window, so the call that names the paths implementing
+each behaviour was sent its folders down to that depth instead, and the model picked folders. Each folder pick's weight is
 spread over its files.
 
 **"not estimated yet: N earlier scan(s) with this model, 3 needed".** The
@@ -500,65 +502,72 @@ estimated. Scans made by an earlier version kept no stage times and do not
 count. On a first run the discovery time is priced from the two setup calls,
 one call after another on a local server, and says "rough".
 
-**"--parent ... scanned another repository" or "no arc.json beside that
-scan".** A widening continues the same repository's lineage, and reads the
+**"--after ... scanned another repository" or "no arc.json beside that
+scan".** A read of more files continues the same repository's scan history, and
+reads the
 earlier scan's `arc.json` from the same data directory. Run it against the
 repository the earlier scan read, with the same `DATA_DIR`.
 
-**"--parent ... collected its files with --exclude ... and this run with the
-defaults".** A widening reads the same set of files as the scans before it,
+**"--after ... collected its files with --exclude ... and this run with the
+defaults".** A read of more files collects the same set of files as the scans
+before it,
 so it needs the same `--exclude`, documents and tests modes,
 `--include-clients` and `--include-fixtures`. Give it the flags the message
-names; the widening command a scan prints at its end already carries them.
+names; the command to read more that a scan prints at its end already carries
+them.
 
-**"--parent ...: its arc.json is version ..., written before a covered file had
+**"--after ...: its arc.json is version ..., written before a covered file had
 to have reached the model".** That record came from an earlier build, whose
 list of covered files could include files the model never read. Start a new
 first scan.
 
-**"Note: --parent ...: its coverage record is inside the repository being
+**"Note: --after ...: its coverage record is inside the repository being
 scanned ... not trusted to say which files were read; so this scan reads every
-file, as a first scan, and continues no lineage."** The data directory is inside
+file, as a first scan, and continues no scan history."** The data directory is inside
 the repository you are scanning, or inside another git checkout (`DATA_DIR`
 names a folder there, or you are in the container image or the Action, which
 keep scans in the repository's `data`), so a repository could have put a scan
-record there. A widening trusts such a record only if this machine wrote it:
+record there. A read of more files trusts such a record only if this machine
+wrote it:
 each scan keeps the digests of its records in your home folder
 (`~/.concept-scanner/repos/`), and the record must still match them. If the
 note says it "has changed since", the record was edited after it was written.
 Nothing in an untrusted record is believed (not its files, drops, renames or
-ancestors), so the scan reads every file and starts a lineage of its own; it
+ancestors), so the scan reads every file and starts a scan history of its own; it
 says so in that note, in its `--json` notice, in its `coverage`, and in its
-status line, which names no parent. Until this version such a widening was
-refused. To widen instead, set `DATA_DIR` outside the repository, where nothing
+status line, which names no earlier scan. Until this version such a scan was
+refused. To read more after the earlier scan instead, set `DATA_DIR` outside the
+repository, where nothing
 in it can write. In the container image the working directory is the mounted
 repository and the home folder belongs to the container, so mount a data
 directory from outside the repository and keep it between runs if you want to
-widen there.
+read more there.
 
 **"... its arc.json is in a data directory inside a git work tree ... not
-trusted to say which lineage the scan belongs to"** (in `review` or the scan
+trusted to say which scan history the scan belongs to"** (in `review` or the scan
 list). The same rule, applied where no repository is named: a coverage record
-in a data directory inside any git checkout places its scan in a lineage only
+in a data directory inside any git checkout places its scan in a scan history only
 if this machine wrote it. The scan is still listed and can be reviewed on its
 own.
 
-**"N covered file(s) changed since an earlier scan read them".** A widening
-never rereads a file its lineage covered, even when the file has changed since;
+**"N covered file(s) changed since an earlier scan read them".** A read of more
+files never rereads a file its scan history covered, even when the file has
+changed since;
 it lists them in `arc.json` (`changed_since_covered`). To read them again, start
-a new first scan rather than widening.
+a new first scan rather than reading more.
 
-**"--parent ...: its lineage has already read N% of the scannable bytes, so a
-ring to M% reads nothing more"** (or "has already read every scannable file").
-A ring takes the file that crosses its share, so a 30% scan can read 50%, and a
-widening to 30% then has nothing to read. Pass a higher `--coverage`, or 100 to
-read the rest; leaving `--coverage` out widens by 20 points from what the
-lineage has read.
+**"--after ...: its scan history has already read N% of the scannable bytes ..."**
+(or "has already read every scannable file"). A read takes the file that
+crosses its share, so a 30% scan can read 50%, and reading more up to 30% then
+has nothing to read. Pass a higher `--coverage`, or 100 to read the rest;
+leaving `--coverage` out reads the suggested read of more files: as many more
+files of the repository's average size as the scan's model profile reads at a
+time, past what the scan history has read.
 
-**`not_reached` in `arc.json`.** These files were in the scan's ring and never
+**`not_reached` in `arc.json`.** These files were among those the scan set out to read and never
 reached the model (too large, or past a batch's budget; with `--multi-model`,
 their extraction failed or did not fit the synthesis prompt). They do not count
-as covered, so the next widening reads them.
+as covered, so the next read of more files reads them.
 
 **"N document(s) not sent: over the budget or the model's window."** The intent
 call is sent about 24 KB of documents at most, and no more than the model's
@@ -679,13 +688,13 @@ deleted.
 
 ## Why was this concept held back?
 
-**Symptom:** a concept you expected is missing, or `refusals <scan-id>` lists it.
+**Symptom:** a concept you expected is missing, or `held <scan-id>` lists it.
 
 **Fix:** `review <scan-id> --why <concept-id-or-name>` says which gate held it,
 what the gate measured, who the verdict points at, and, when a number decided
 it, the setting by the key you would give `init`, with its built-in value, any
 value you saved, and how to change it. `scan --verbose` prints the same for every
-refused concept at the end of the run. Two of the verdicts are about what a
+concept held back at the end of the run. Two of the verdicts are about what a
 concept says rather than how it scores:
 
 - **`required_field_missing`**: characterization answered, and after the
@@ -704,6 +713,16 @@ concept says rather than how it scores:
   detail names the field.
 - **`axes_unanswered`**: the concept shipped without its engineering axes after
   being asked for them twice.
+
+**If you think a gate was wrong:** `held <scan-id>` lists what every pass of
+the scan history held back, each row with a ref, and `held <scan-id> --set
+<ref>=wrong --note "why"` records that the concept should have shipped
+(`=right` that the hold was right). That judgment is what tells a gate that is
+right from one that is broken; until somebody makes it, `held` reports only how
+many holds are waiting. The window's Held back tab, beside a scan's review,
+does the same. A row recorded for a concept that shipped (`axes_unanswered`,
+`copied_test_data_field`, `characterization_incomplete`) is listed apart and
+takes no judgment.
 
 ## The status line, the status file, and stale runs
 
@@ -816,6 +835,71 @@ expected Avenue B to find cross-file mechanisms in a supported-language repo.
 may have parse errors. Run `go-pbd encode .` directly in the workspace to see
 the underlying failure.
 
+## A concept has no lines (`start_line` is `null`)
+
+**Symptom:** a concept's `location.start_line` and `end_line` are `null`, or the
+scan's `lines:` line says some concepts are without lines.
+
+**Cause:** a concept's lines are the lines of the declarations its own text
+names in the file it cites, read after every model call; no model writes them.
+The lines section of `grounding.json` beside the scan gives each concept's
+reason (`without_lines`):
+
+- **`no_declaration`**: the concept's summary, technical approach, mechanism
+  evidence and components name none of the file's declarations by its exact
+  name. A plain word found only in the concept's name does not count (a concept
+  called "Split cache" does not name `type Split`), and a name starting with two
+  underscores (`__init__`) never does.
+- **`other_language`**: the file is in a language other than Go, TypeScript,
+  JavaScript and Python.
+- **`no_file`**, **`not_collected`**, **`not_read`**: the concept cites no file,
+  a file the scan did not collect (an `--exclude`, `--only` or a folder rule
+  left it out), or one that could not be read.
+- **`over_read_cap`**: the file is larger than the read cap (100 KB).
+- **`does_not_parse`**: a Go file that does not parse.
+
+A concept naming declarations more than 200 lines apart is given the lines of the
+first function or method it names (`chosen: first_function`), or of its first
+declaration when it names none (`chosen: first_declaration`), rather than none;
+`--lines-max-span` changes
+that limit. A range a model wrote anyway is discarded, and counted in
+`line_ranges_zeroed`.
+
+**Fix:** none is needed: `null` means the scan could not tie the concept to
+particular lines, and its file is still its location. Lines are derived when a
+scan (or `locate`, for the concepts it moves) runs, so a later correction to a
+concept's text does not change them.
+
+## `show --open` does not open the file
+
+**Symptom:** `show <scan-id> <concept-id> --open` (or the window's **Open in
+editor**) says the concept "is not opened", or the button is not shown.
+
+**Cause and fix**, by what it says:
+
+- **"has no text editor this program opens a file with unless one is saved"**:
+  on Linux there is no system text editor that cannot run what it opens, so save
+  one: `concept-scanner init --editor <program> --editor '{file}'` (see the
+  README's "Opening a concept's code" for VS Code, vim and JetBrains), or open
+  the link instead with `--web`.
+- **"read a repository by its URL and keeps no copy of its code"**: the scan
+  cloned the repository and removed the clone; use `--web`, or scan a local
+  checkout.
+- **"this machine has no record of writing it"**: the scan's data folder is
+  inside a git repository (the container and the Action keep it in the scanned
+  repository), and the record naming the folder the scan read was not written by
+  this machine, so nothing it names is opened. Scan again here, or keep the data
+  folder outside the repository (`DATA_DIR`).
+- **"is outside the repository the scan read"** or **"no longer in the
+  repository"**: the concept's file is not there to open; `review` and `show`
+  still say where the scan found it.
+- **"is not a source or documentation file a scan reads"**: only the kinds of
+  file a scan collects are opened, never an application or a script launcher
+  (`.app`, `.command`, `.exe`).
+
+`show` without a flag prints the path and the link, so you can open either
+yourself.
+
 ## "Tests: 0 of N" / `tests.json` pairs nothing
 
 **Symptom:** the scan's Tests line says few or none of its concepts are
@@ -833,23 +917,24 @@ applied to each concept:
 - **The tests are not beside the code.** Pairing reads the `_test.go` files in
   the concept's own directory. An integration suite elsewhere is not seen
   (`no_tests` counts concepts with none found).
-- **The concept's line range covers no declaration**, for example only a
-  comment or the package clause (`no_declarations`). A concept with no range at
-  all is paired against its whole file and marked `file_level`.
-- **The only names in range are used by most of the directory's tests.** Such a
+- **The concept's file declares nothing** a test could use (`no_declarations`).
+  Every concept is paired against its whole file (`file_level`), with the tests
+  of the declarations its own text names ranked first; no line range is read.
+- **The file's only names are used by most of the directory's tests.** Such a
   name cannot tell one test from another, so it is not used unless it is the
-  range's only name; it is listed under the concept's `common_names`.
+  file's only name; it is listed under the concept's `common_names`.
 - **A file is over the read cap** (100 KB). It is skipped and counted, never
   read cut short: `too_large` for a concept's own file, `test_files_too_large`
   for a test file. `test_files_unreadable` counts test files that did not parse.
 - **The concept has no file at all** (`no_file`), which happens when the model
-  named none and triage was skipped, or found no file holding its terms (such a
-  concept ships `pending`, unverified).
+  named none and looking for its file was skipped, or found no file holding its
+  terms (such a concept ships with its location unconfirmed).
 
 **Fix:** none is needed for a correct "0": it means no test in the concept's
-directory uses the code in its range. If you expected a pairing, read the
-concept's entry in `tests.json`: `range_names` are the declarations its range
-covers, and each paired test lists the names it was paired on.
+directory uses the code in its file. If you expected a pairing, read the
+concept's entry in `tests.json`: `range_names` are the declarations of its
+file, `described_names` the ones its text names, and each paired test lists the
+names it was paired on.
 
 ## `--tests evidence`: properties rejected, or "none of the answers could be read"
 
@@ -898,7 +983,7 @@ read `dependency_map.errors` in the `--json` output for the exact failure.
 
 ## "no --primary-model given, and the model registry has no default"
 
-**Symptom:** a remote scan (or `bridges`, `triage`, `synthesize`, `figure draw`)
+**Symptom:** a remote scan (or `combine`, `locate`, `patterns`, `figure draw`)
 stops before any model call with this message, or the same one naming
 `--secondary-model`, and exits 1.
 
@@ -1013,9 +1098,9 @@ exactly as it was.
   agent's terminal (the message names which). Run it yourself in a terminal.
   `update --json` always checks without installing.
 - **"this copy runs from the container image"**: pull the new image instead,
-  `docker pull ghcr.io/obviously-not/concept-scanner:v2` (the `update` step
+  `docker pull ghcr.io/obviously-not/concept-scanner:v3` (the `update` step
   names the newest release's major). A GitHub Action on
-  `Obviously-Not/concept-scanner-public@v2` runs the newest 2.x image already.
+  `Obviously-Not/concept-scanner-public@v3` runs the newest 3.x image already.
 - **"cannot write beside ..."**: the folder holding the binary is not writable
   by you, which `update` now finds before downloading anything. It never asks
   for elevated rights; reinstall with the install script (the command it
@@ -1051,7 +1136,7 @@ your home folder and nowhere else, so a repository you scan cannot change it.
 
 ## A renamed file's concepts were retired instead of following it
 
-A rescan (`--changed`) follows a file that MOVED and keeps its concepts, but
+A re-read of changes (`--changed`) follows a file that MOVED and keeps its concepts, but
 only where git can see that it moved. It needs the commit the earlier scan
 recorded to be in the history of the checkout you are scanning now.
 
@@ -1081,7 +1166,7 @@ with enough depth to reach the earlier scan's commit).
 
 ## A concept shows STALE or RETIRED and I cannot export it
 
-You can. `submit` names the state in its notice and proceeds.
+You can. `export` names the state in its notice and proceeds.
 
 Both states are disclosures about a concept's EVIDENCE, not verdicts on
 whether the mechanism exists. STALE means the file changed since the pass that
@@ -1109,13 +1194,14 @@ container image or the GitHub Action is still in the scanned repository's
 
 ## `review` showed fewer concepts than my scans found
 
-Give `review` the id of your FIRST scan in a lineage, not the latest. From the
+Give `review` the id of your FIRST scan in a scan history, not the latest. From the
 root it reviews every pass that continued it and says so in its header: `union
 of 3 passes, 41 concepts`. From a later pass's id it reviews that pass alone if
 no pass continued it, and otherwise what the passes after it hold, which
 includes the passes before it.
 
-Two widenings of one scan are two branches, and the root's review reads both.
+Two reads of more files after one scan are two branches, and the root's review
+reads both.
 A concept found more than once, on two branches or by a later pass that re-read
 its file, is shown once and its other records are listed as shared: the same
 file, and the same name or the same two or more code symbols named in its
