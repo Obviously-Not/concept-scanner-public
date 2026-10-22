@@ -99,7 +99,13 @@ on this machine: its weights, its context at the run's window across every slot
 the server runs, and its prompt cache, against the machine's memory less a
 reserve. A model that does not fit at the run's window is given the largest
 window that does, with that line; below the smallest window a run can use, the
-run stops instead.
+run stops instead. Each line names the model server whose loaded models it
+read. When a model fits only if the server unloads another model, and that
+model is not one this run loaded, a line says so before anything loads:
+"loading <model> ... so that server will unload <other model> (N GB, kept
+loaded indefinitely ...), which this run did not load". Only the server the
+scan talks to is asked what it holds, so memory another model server on this
+machine holds is not counted.
 
 **Fix:** the models screen and the first-run picker flag profiles that exceed
 your detected RAM; choose one they do not flag, or re-pick with
@@ -322,6 +328,25 @@ run is then sized for the window named).
 <url> --window <tokens>`. Or load the model with a context of at least 32,768
 tokens.
 
+## A concept says it was not characterized: its file did not fit
+
+**Symptom:** a scan finishes, and a concept ships marked not characterized, with a
+held-back row (`held`, `review --why`) naming an estimate and a window, and
+`components.json` says `not_asked`; the run warns how many.
+
+**Cause:** characterization sends the file a concept cites. When the whole file
+does not fit the model's window, it sends the part of the file discovery read
+the concept from instead (`provenance.part` on the concept says which, and
+`characterized_from` whether the whole file or the part was sent). When even
+that part does not fit, nothing is sent, so the run is not lost to a cut prompt.
+The plan and a dry run count such files before the scan runs.
+
+**Fix:** a model, or a server setting, with a larger context window; a smaller
+`--budget-characterization` also leaves more of the window for the file, at the
+cost of a shorter answer. Separately, any prompt is refused before it is sent
+when its estimate passes the window by more than `input-presend-tolerance`
+(1.67 times, because the estimate runs high); `init` changes it.
+
 ## "the server cut the prompt of a call": the run stopped
 
 **Symptom:** a scan, `combine`, `locate`, `patterns` or `figure draw` stops
@@ -343,6 +368,11 @@ from the prompt that was cut. The other commands save nothing.
 **Fix:** for a local Ollama, use `--provider ollama`, which sets the window on
 every call. For LM Studio, llama.cpp or vLLM, load the model with a context of
 at least 32k tokens. Then run the command again.
+
+Since characterization no longer sends a prompt it knows is too large (the
+entry above), and any prompt estimated well past the window is refused before
+it is sent, this stop is rarer: it means a prompt estimated to fit did not, or
+the window changed under the run.
 
 ## The scan finished but shipped 0 concepts
 
@@ -479,28 +509,63 @@ centre is refused rather than turned into a read of every file, so a run asked t
 30% never reads, and pays for, the whole repository. Type the purpose with
 `--intent`, or run with `--coverage 100`.
 
-**"N dropped: their quotes were not found in the documents."** A behaviour the
-model stated is kept only when its quote, ten characters or more, is in the
-document it cites. A dropped one is listed with its cause in `intent.json`. If
-most are dropped, the documents may not describe the code, or the model may be
+**"N dropped: ..." on the intent screen, or "dropped ...:" under the plan's
+Intent line.** A behaviour the model stated is kept only when it has text,
+cites a document the call was sent, and quotes that document with at least ten
+letters over two words; past the eight an intent keeps, the rest are dropped.
+Each dropped one is named with its cause there, in a `--dry-run`'s notice, and
+in `intent.json` and a saved plan's `intent` (as a code: `no_text`,
+`file_not_sent`, `quote_too_short`, `quote_not_in_file`, `over_limit`). If most
+are dropped, the documents may not describe the code, or the model may be
 paraphrasing; type the behaviours you care about on the intent screen.
 
-**Picks dropped as `path_not_in_tree` or `path_outside_workspace`.** The model
-named a path that is not in the repository's collected files, or one that
-leaves it. Nothing is ever opened because a model named it; the pick is
-counted in `intent.json` and ignored.
+**"Locate dropped N paths: ..."** The model named a path that is not among the
+files this scan can read, one that leaves the repository, one it had already
+named for the same behaviour, a behaviour number the intent does not have, or
+more paths than are kept; the line says how many for each. Nothing is ever
+opened because a model named it; each pick is recorded with its cause in
+`intent.json` and ignored.
 
 **"folders only, N deep" in `intent.json`.** The repository's file list was too
 long for the model's window, so the call that names the paths implementing
 each behaviour was sent its folders down to that depth instead, and the model picked folders. Each folder pick's weight is
 spread over its files.
 
-**"not estimated yet: N earlier scan(s) with this model, 3 needed".** The
-whole-scan range is drawn from earlier scans with the same model on this
-machine that finished; until three exist, only the discovery time is
-estimated. Scans made by an earlier version kept no stage times and do not
-count. On a first run the discovery time is priced from the two setup calls,
-one call after another on a local server, and says "rough".
+**"a starting estimate from another machine's recorded scans, set high on
+purpose".** This machine has not recorded that stage's calls with that model
+yet, so the stage is priced from starting rates taken from scans recorded on
+another machine, each at the slow end of what was recorded, and the estimate
+errs long. Each stage's own calls replace its starting rate once this machine
+has made them. A starting rate is a value `init` saves (`init --json` lists the
+`starting-...` keys) if yours runs faster or slower.
+
+**"rough: ..." beside a time.** The stage's price rests on fewer than 20 of this
+machine's calls (`chars-per-token-min-calls`), so it can move as more are
+recorded.
+
+**"at least: not priced, ..." in a time.** A stage the scan runs could not be
+priced, and the figure leaves it out: a stage whose calls are counted only once
+an earlier stage has answered (Pass 4, tests as evidence, the semantic batches,
+Pass 5 until it has the shipped concepts), or one with neither recorded calls
+on this machine nor a starting rate (Pass 5, whose dry run shows the count it
+cannot yet price). The stage is named in the parentheses.
+
+**"extrapolated past the largest call on record".** The stage's calls will send
+more than any call of that stage this machine has recorded, so its price
+carries what was recorded to a size nothing has measured, and can be further
+off than the range says.
+
+**"no read fits in --time-budget ...".** Even the smallest share the budget
+could choose is estimated, at the high end of its range, past the budget. The
+message names that share and its estimate; give a larger `--time-budget`, or
+read that share anyway with the `--coverage` it names. On a first run the
+estimate is a starting estimate, set high on purpose.
+
+**"No profile has a time for ...".** `models --workspace` was given an address,
+which a scan clones before it reads anything, or a folder that is not there, or
+the scan's flags have no time estimate (`--two-phase`); the profiles are listed
+without a time. Under `--two-phase` the multi-model profile can still have an
+"at least" time, and the line names the profiles that have none.
 
 **"--after ... scanned another repository" or "no arc.json beside that
 scan".** A read of more files continues the same repository's scan history, and
@@ -564,10 +629,66 @@ leaving `--coverage` out reads the suggested read of more files: as many more
 files of the repository's average size as the scan's model profile reads at a
 time, past what the scan history has read.
 
+**"This branch has covered N% of the scannable bytes so far (...); every branch
+of this scan history together M%".** Two reads of more files after one scan are
+two branches, and the second reads again what the first read, so the shares
+the passes record add up to more than the repository holds. `arc.json` says
+which part is which: `reread_share` is what a pass read that an earlier pass
+had read (a second branch's overlap, or a `--changed` pass's re-reads), and
+`repository_share` what every branch has read together. Each pass's
+`achieved_share` less its `reread_share`, summed, is the last pass's
+`repository_share`, as long as the repository's scannable files have not
+changed between passes (each pass divides by its own). A pass on another branch
+whose record could not be read, or is not trusted, is left out and named in
+`peers_not_read`, and the line says "at least" the share. To read more without
+reading a branch's files again, continue that branch: `--after` the newest pass
+of it, which the plan names when a read would start a second branch.
+
 **`not_reached` in `arc.json`.** These files were among those the scan set out to read and never
-reached the model (too large, or past a batch's budget; with `--multi-model`,
-their extraction failed or did not fit the synthesis prompt). They do not count
-as covered, so the next read of more files reads them.
+reached the model (past a batch's budget, or grown past the read cap after the
+plan was made; with `--multi-model`, their extraction failed or did not fit the
+synthesis prompt). They do not count as covered, so the next read of more files
+reads them. A file already over the read cap when the plan was made is in no
+read at all: the plan names it (the next entry).
+
+**"N file(s) over the ... read cap: ... is not read; a scan given
+--max-file-size-bytes N reads it".** A file larger than the read cap (102,400
+bytes built in) is collected and not read, by any read at that cap. The plan,
+a `--dry-run` (its notice, and `oversize` in the saved plan) and the finished
+scan's **Coverage** line name each one, largest first, with its size; the value
+given is the largest file's size, so a scan given it reads them all. A file
+larger than one discovery call is then read in parts, which costs a call per
+part, and characterized from the part a concept came from when the whole file
+does not fit. A `--multi-model` scan reads no file in parts: it sends each file
+whole to each model, so a file too long for each model's window is not read,
+and the scan counts it as too long for the window, not over the read cap; a
+model with a larger window reads it. `init --max-file-size-bytes N` keeps the
+value for later scans.
+The largest read cap there is is 6,553,600 bytes; the line says so when a file
+is larger than that.
+
+**"Warning: pin X pinned no file: ..."** A pin (`--pin`, or a pin a saved plan
+carries) named none of the files the scan can read, and the scan ran without
+it. The rest of the line says why and, where something changes it, what does:
+
+- **over the read cap**: the file is larger than the read cap; the line gives
+  the `--max-file-size-bytes` value that reads it (the entry above).
+- **this scan history drops**: a `--drop`, a saved plan's drop or one an earlier
+  pass of the scan history made takes it out, and a read of more files keeps
+  its scan history's drops. A new first scan without that drop reads it.
+- **collection left out**: the file is a test file (`--tests source` reads it),
+  documentation the documents mode left out (`--include-docs` reads it),
+  outside every `--only` path, matched by an `--exclude` glob, or of a kind no
+  scan reads.
+- **under a folder a scan skips**: a folder on the way to it is vendored code,
+  generated output, a client or examples folder, a test harness, fixtures, or a
+  checkout of its own; the line names the folder and the flag that reads it,
+  where one does.
+- **no file or folder of the repository has that path** (or, for a glob, none
+  matches it): check its spelling. A path is read relative to the
+  repository's root, without its letter case.
+
+The saved plan and `arc.json` record every pin's outcome under `pin_outcomes`.
 
 **"N document(s) not sent: over the budget or the model's window."** The intent
 call is sent about 24 KB of documents at most, and no more than the model's
@@ -592,10 +713,24 @@ hundreds of candidates.
 model or `--exclude` to cut the candidate count. Concurrency flags will not help
 if the GPU is already saturated.
 
-**If the scan ends with a "model reloads" or "spill" line**, on a local Ollama,
-the slowness had a cause outside the scan, and `models.json` beside the scan
-records it:
+**If the scan says "model reload" while it runs, or ends with a "model
+reloads" or "spill" line**, on a local Ollama, the slowness had a cause outside
+the scan, and `models.json` beside the scan records it:
 
+- **"model reload: <model> was loaded again for one of this run's calls"**,
+  printed as it happens: the call's server reported loading the model, and the
+  run had already had it loaded, so something unloaded it in between. A
+  stage whose time left is priced from its own steps is then priced again
+  from the steps that begin after it (`eta_basis` reads `stage-since-reload`
+  in the status file), since the load made the steps before it misleading,
+  the one that paid the load among them; a stage priced from recorded calls
+  counts this one among them without its load time, as no recorded call's
+  price includes one, and the note says which. The closing line below counts
+  the same calls by the same rule. A scan that reuses discovery answers
+  unloads its model itself once, to check one of them against a server that
+  does not hold it; the load that follows is the scan's own, written to the
+  run log and counted apart in `models.json` (`loads_after_own_unload`), and
+  never said as a reload.
 - **"model reloads: <model> was loaded N times during this scan"**, or **"was
   loaded for N of this scan's calls"**: something unloaded the model between
   calls, usually another program's model needing the memory, or the server's
@@ -612,6 +747,13 @@ records it:
   each model to fit before it started, so something else took memory meanwhile.
   Run fewer slots on the server (`OLLAMA_NUM_PARALLEL`) or close other programs
   that use the GPU.
+- **"left loaded: <model> holds N GB on the model server at <address>"**: the
+  scan loaded the model and the server will keep it loaded long after the scan
+  (more than `model-left-loaded-after`, 10 minutes, past its end), because the
+  server's keep-alive is longer than its default (`OLLAMA_KEEP_ALIVE`). The line
+  says until when, or that the server was asked to keep it until told, and
+  `ollama stop <model>` unloads it now. The program does not unload a model
+  itself.
 - **"prompt reuse: <stage>'s N calls reused X% of the M prompt tokens they
   read"**: that stage's calls open with the same text (documentation matching's
   calls each open with one part of the documentation list), so a server that
@@ -686,6 +828,29 @@ a scan that extracts every file afresh. Versions before this one kept it in a
 `cache` folder where the scan ran; that folder is no longer read and can be
 deleted.
 
+## "Changed while scanning": the repository changed during a scan
+
+**Symptom:** the scan's summary has a `Changed while scanning` line, and its
+last line says the tree it read changed while it ran.
+
+**Cause:** a scan records the commit once, when it starts, and reads each file
+when the discovery call holding it is sent. A file edited after the scan read
+it, or a checkout moved to another commit while the scan ran, leaves concepts
+that describe the files as they were read, which neither the recorded commit
+nor the tree at the end holds. `summary.json`'s `tree_changed` lists the commit
+at the start and at the end, the files the scan read that changed after it read
+them (`changed_files_read`), and the cited files that already differed from the
+commit when the scan started (`cited_files_differing_at_start`), for which a
+link at that commit may not show what was read. A scan that read part of the
+repository compares each file it read by its content; any other scan compares
+with git, which cannot see a file that already differed from the commit when
+the scan started and was edited again (`residual` says so).
+
+**Fix:** scan again once the repository is settled. For a scan that read part
+of the repository, `scan --after <scan-id> --changed` reads the changed files
+again, and the line offers it. Committing before a scan keeps a link at the
+scan's commit pointing at what was read.
+
 ## Why was this concept held back?
 
 **Symptom:** a concept you expected is missing, or `held <scan-id>` lists it.
@@ -724,6 +889,35 @@ does the same. A row recorded for a concept that shipped (`axes_unanswered`,
 `copied_test_data_field`, `characterization_incomplete`) is listed apart and
 takes no judgment.
 
+## A combination is missing, or `combine` asked about fewer candidates than the cap
+
+**Symptom:** a combination you expected is not among a scan's, or `combine`
+at a larger `--combination-max-candidates` asked about fewer candidates than
+the cap, or said every candidate it found was asked about by an earlier run.
+
+**Cause:** Pass 3 asks the model about the top candidates by graph score, with
+a share kept for combinations of three or more concepts and a penalty for
+concepts already chosen, so a run at a larger cap is not a superset of a
+smaller one. A re-run of `combine` asks only about member sets no earlier run
+asked about, over the scan, any pass of its scan history it reads, or a scan
+it continues: the stored combinations, and the candidates the held-back
+records hold. A candidate the dedup rule calls one of those (it shares most of
+its concepts with it) is skipped too, and a skipped candidate uses none of the
+cap. A candidate whose call failed is asked again, and what that run decides
+replaces its row.
+
+**Fix:** `held <scan-id>` lists what each candidate that did not ship came to,
+with its graph score and rank: `combination_declined` (the model answered that
+the concepts provide nothing together), `combination_below_floor` (synergy
+under `--combination-synergy-floor`), `combination_incomplete` (the answer
+lacked a name, a synergy or enough of the candidate's concepts),
+`combination_failed` (the call failed), and `combination_folded` (a near
+duplicate of a kept combination, named in the detail). A combination that
+shipped joining fewer concepts than its candidate is listed apart
+(`combination_narrowed`). `review <scan-id> --why <candidate>` explains one by
+its members joined with `+`, as `held` names it, and `held <scan-id> --set
+<ref>=wrong` records that a candidate should have been a combination.
+
 ## The status line, the status file, and stale runs
 
 **Symptom: timestamped lines instead of a status line at the bottom.** The live
@@ -731,7 +925,19 @@ status line runs only when both stdin and stderr are a terminal, `TERM` is not
 `dumb`, and neither a coding agent nor CI is detected; everywhere else a scan
 prints a line per stage and a heartbeat every 30 seconds instead. `--progress
 live` forces the status line on a terminal; `--progress static` keeps it
-without motion.
+without motion. Each of those lines starts with the time since the run began,
+always as `[H:MM:SS]` (`[0:59:59]`, then `[1:00:00]`).
+
+**Symptom: discovery's step count and its calls differ.** Discovery's stage
+says both, "Pass 1 discovery (137 batches, 144 calls)": its steps are batches,
+and a file read in parts, or a batch whose files take more than one call, makes
+more calls than batches. The time left is counted in calls, and a batch the
+cache answered counts its calls as done, so it reaches zero when the stage
+does.
+
+**Symptom: "model reload: ... was loaded again" while a scan runs.** Something
+unloaded the model under the run; "The scan is slow" above says what, and what
+the stage's time left does then.
 
 **Symptom: the terminal behaves oddly after a scan was killed.** A scan killed
 with `kill -9`, or one that crashed, cannot restore the terminal it was drawing
@@ -760,6 +966,15 @@ text a model or the scanned repository wrote) is printed between a
 does not act on it. `##[` in the output appears as `#\u0023[` for the same
 reason; inside JSON that is the same text.
 
+**Symptom: I cancelled a scan; what did it keep?** Its last line says. On a
+scan sending one request at a time to a server on this machine (the default),
+discovery's answers are kept in this machine's cache as they arrive, and the
+line names how many and the command that reuses them: running it sends only the
+requests not answered yet. A `--multi-model` scan keeps each file's extraction
+the same way. With several requests in flight (a remote server's default) or
+`--two-phase`, the cache is off, and the line says nothing is kept and why. `status <run-id>`
+shows the same, and offers the command as a step.
+
 **Colour:** any non-empty `NO_COLOR` turns colour off.
 
 ## Cloud costs more than expected
@@ -769,7 +984,11 @@ reason; inside JSON that is the same text.
 **Cause:** premium remote models are priced per token, and input-cost caching is
 not yet enabled, so large repositories re-send a lot of context.
 
-**Fix:** start with a lower-cost model from the shortlist
+**Fix:** see what a run will take before it starts: `scan --dry-run` prices
+each read stage by stage, `combine --dry-run` and `patterns --dry-run` count
+and price Passes 3 and 5 over a stored scan, `models --workspace <folder>` gives
+each profile's time for the repository, and `scan --time-budget 2h` reads the
+largest share that fits. Start with a lower-cost model from the shortlist
 (`concept-scanner models --cloud`), scan a smaller target first to gauge cost,
 and prefer local Ollama (free) for proprietary or exploratory work. A remote
 scan prints its estimated cost before it spends (`scan --dry-run` shows it
@@ -816,22 +1035,31 @@ Fix it or unset it.
 run, and you expected it to.
 
 **Cause:** Avenue B (PBD-guided semantic batching) requires go-pbd to encode the
-workspace. go-pbd supports Go, TypeScript, Python, and Markdown. If the
-repository contains only unsupported languages (Rust, Zig, C, Java, etc.) or if
-encoding fails (parse errors, empty workspace), Avenue B skips gracefully.
-Since 2026-10-08 the scan's Avenue B line says which of these it was: mixed
-project files, no project file or readable document, several languages below
-the root, a language this build cannot encode (named with its file count; a
-release binary built without cgo cannot encode TypeScript or Python), or a
-failed or empty encode.
+language of the files the scan reads. Every build encodes Go, TypeScript, Python
+and Markdown, TypeScript and Python read by pattern, so a release binary, the
+app, the installer, the container image and the Action encode what a build with
+C (cgo) encodes. Up to 3.0.0 a binary built without C batched TypeScript and
+Python by size only; if a release binary of that version skipped Avenue B on
+such a repository, that was why, and a newer release groups them.
+`concept-scanner version --json` lists the languages a binary encodes
+(`semantic_batching.languages`). If the repository contains only languages no
+build encodes (Rust, Zig, C, Java, etc.) or if encoding fails (parse errors,
+empty workspace), Avenue B skips. Since 2026-10-08 the scan's Avenue B line
+says which of these it was: mixed project files, no project file or readable
+document, several languages below the root, code with no semantic encoder (the
+files, by extension and count), or a failed or empty encode. When Avenue B
+runs, its line names the language and how it was read (`(TypeScript, read by
+pattern)`), and the run's `summary.json` records the same
+(`semantic_batching`).
 
 **Why it is not an error:** Avenue A (size-based batching) still runs and
 produces concepts. Avenue B is additive; skipping it means you get the same
 results as before semantic batching existed. No action is needed unless you
 expected Avenue B to find cross-file mechanisms in a supported-language repo.
 
-**Fix (if unexpected):** check that the repository contains `.go`, `.ts`,
-`.tsx`, `.py`, or `.md` files. If it does and Avenue B still skips, the files
+**Fix (if unexpected):** check that the repository contains files in a
+language `concept-scanner version --json` lists under
+`semantic_batching.languages`. If it does and Avenue B still skips, the files
 may have parse errors. Run `go-pbd encode .` directly in the workspace to see
 the underlying failure.
 
@@ -869,6 +1097,31 @@ that limit. A range a model wrote anyway is discarded, and counted in
 particular lines, and its file is still its location. Lines are derived when a
 scan (or `locate`, for the concepts it moves) runs, so a later correction to a
 concept's text does not change them.
+
+## The authorship line says concepts carry no contributors
+
+**Symptom:** the scan's `authorship:` line (the summary's **Authorship** row)
+says few or none of its shipped concepts carry contributors from git blame.
+
+**Cause:** contributors come from `git blame` over the lines of the
+declarations a concept's own text names, at the commit the scan recorded when
+it started. The line names why the rest carry none, with a count for each
+cause (`summary.json`'s authorship counts carry each as `without_<cause>`):
+
+- **a reason the concept has no lines** (`no declaration`, `other language`,
+  `no file`, `not collected`, `over read cap`, ...): there is nothing to blame;
+  the section above explains each.
+- **`outside git`**: the scanned folder is not in a git work tree.
+- **`blame failed`**: `git blame` could not run on the file at the scan's
+  commit, or named nobody: the file was added or moved after that commit, or
+  the clone is shallow and does not hold its history.
+- **`not attributed`**: attribution never read the concept (a documentation
+  concept the result carries as context).
+
+**Fix:** commit the files before scanning, and scan a full clone (`git fetch
+--unshallow` turns a shallow one into one) rather than a shallow one. A concept
+with no lines carries contributors once its text names a declaration in its
+file.
 
 ## `show --open` does not open the file
 
@@ -936,6 +1189,11 @@ concept's entry in `tests.json`: `range_names` are the declarations of its
 file, `described_names` the ones its text names, and each paired test lists the
 names it was paired on.
 
+The Tests line, and the line the pairing stage ends with, close with the
+`--tests` mode the scan ran with: under `--tests off`, the default, pairing is
+the model-free step above and no model reads a test, so a stage that took no
+time has done all it was asked to.
+
 ## `--tests evidence`: properties rejected, or "none of the answers could be read"
 
 **Symptom:** `tests.json` lists properties under `rejected`, or the Tests line
@@ -958,6 +1216,20 @@ paraphrases instead of quoting gets those properties rejected by design. If
 every answer was unreadable,
 check the model server as for any failed call; the scan's concepts are
 unaffected either way.
+
+## "Pass 5: 1 combination answer was one object where a list was asked"
+
+**Symptom:** a scan with `--patterns`, or `patterns`, prints this note in its
+closing lines and its notice, and finds one pattern at most.
+
+**Cause:** Pass 5 asks the model for a list of combinations of the concepts it
+judged load-bearing. The model answered with one combination where a list was
+asked. That one is kept, and read like any other, but the model may have found
+others it did not name, so the run says so rather than reading as complete.
+
+**Fix:** run `patterns <scan-id> --workspace <path>` again, which asks again
+over the stored scan without scanning; a model that answers with a list there
+gives every combination it found. Each run's patterns replace the last run's.
 
 ## "License check incomplete" / "manifest(s) could not be analyzed"
 
@@ -1098,9 +1370,9 @@ exactly as it was.
   agent's terminal (the message names which). Run it yourself in a terminal.
   `update --json` always checks without installing.
 - **"this copy runs from the container image"**: pull the new image instead,
-  `docker pull ghcr.io/obviously-not/concept-scanner:v3` (the `update` step
+  `docker pull ghcr.io/obviously-not/concept-scanner:v4` (the `update` step
   names the newest release's major). A GitHub Action on
-  `Obviously-Not/concept-scanner-public@v3` runs the newest 3.x image already.
+  `Obviously-Not/concept-scanner-public@v4` runs the newest 4.x image already.
 - **"cannot write beside ..."**: the folder holding the binary is not writable
   by you, which `update` now finds before downloading anything. It never asks
   for elevated rights; reinstall with the install script (the command it

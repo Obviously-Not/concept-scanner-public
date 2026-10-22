@@ -4,6 +4,380 @@ All notable changes to concept-scanner are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and releases are the
 `v*` tags in this repository.
 
+## [4.0.0] - 2026-10-22
+
+**A combination's members and a pattern's refs now name the scan they belong to, which makes this a major
+release.** Every entry of `contributing_concept_ids` and `concrete_refs` is written `<source_scan>/<id>` (Bridge
+3.0.0, ScanResult 3.0.0), so a script or importer that reads those ids as bare concept ids reads the new form;
+the image and the Action move to `v4`, and `@v3` keeps running 3.0.0. **It also closes a way a repository you are
+handed could run a program on your machine** through its own git settings, and four more issues a security review
+found (Security, below), and it is built with Go 1.27.3.
+
+### Added
+
+- **A concept says which part of a large file it was found in** (Concept 2.2.0): `provenance.part` is null when
+  discovery read the concept's file in one call, else `{index, of, start_byte, end_byte, characterized_from}`: the
+  part's number and how many parts the file was read in (both from 1), the part's byte range in the file at the
+  scan's commit (a test file's range is mapped back through its masking), and whether characterization was sent the
+  whole file or that part. Additive; platform reads it.
+- **A cancelled scan says what it kept, and how to reuse it.** Its last line names what this machine's caches hold
+  (discovery's answers as they arrive, on a scan sending one request at a time; a `--multi-model` scan's extractions)
+  and the command that reuses them, or says nothing is kept and why. The status file records the command
+  (`resume_args`, status 1.5.0), and `status` offers it as a step, from any folder and in the window, refused for a
+  status file inside the scanned repository or one whose command does not scan its own target. A cancelled
+  `scan --resume` is offered the resume its last line printed, built from the stopped run's record.
+- **`input-presend-tolerance`** (1.67): a prompt whose estimate passes the window by more than this is refused
+  before it is sent, on every stage and both providers, and recorded as refused, never as an infrastructure failure.
+- **A finished scan names every stage it did not run.** The run summary's "Not run or capped" lines (run summary
+  1.1.0) say each stage the run did not run or ran capped (Pass 3, Pass 4, Pass 5) and each kind of file it left out
+  that a flag or a command reads, with why and that flag or command; the steps lead to `combine` and `patterns` where
+  they apply.
+- **Each disclosure's counts are in the run summary** (`summary.json`'s `disclosures`), the disclosures step and the
+  notice, and the summary says how spread the scores are (`counts.score_spread`, nine axes over the shipped concepts
+  and the score gate's held rows), which nothing decides on.
+- **Files over the read cap are named.** A plan, a dry run, the caveat and both scanner paths name the files over
+  `--max-file-size-bytes`, largest first, with the value that reads them; each `--pin` says what it did (pinned, over
+  the cap, dropped, left out, under a skipped folder, no such path) in the plan and with a warning when it pinned
+  nothing (`arc.json` 1.15.0, the saved plan 1.8.0).
+- **A read after a pass that a later pass already continues says it starts a second branch**, how many files that
+  branch read and how many of this read are among them, with a step to continue that branch instead.
+- **A textbook concept that shipped says why**, in its specification, with the score floor in force.
+- **A run not at a terminal names `status --wait <run-id>`** in its first line.
+- **Release binaries group TypeScript and Python by meaning.** Semantic batching (Avenue B) read TypeScript and
+  Python with tree-sitter, which is C, and the release binaries, the app, the installer, the container image and the
+  Action are built without C, so up to 3.0.0 they grouped only Go and Markdown by meaning and batched TypeScript and
+  Python by size only, which nothing but a TypeScript scan's Avenue B line said. Every build now reads TypeScript and
+  Python by pattern, in pure Go (go-pbd 0.10.0's reader, which agreed with tree-sitter on every declaration, span and
+  dependency edge of the two repositories its comparison was registered on), so every build groups Go, TypeScript,
+  Python and Markdown by meaning and the same files give the same batches whatever the binary: on four of the five
+  TypeScript and Python repositories measured, the batch-suggestion prompt is byte for byte the one a build with C
+  sent before, and on the fifth it differs by 2 of 9,821 dependency edges. Go and
+  Markdown batch as before, byte for byte. `version --json` carries `semantic_batching` (`built_with_cgo`,
+  `languages`, `by_size_only`, which is empty in every build) and `version` says it in a line. A scan's Avenue B line
+  names the language it read and how (`(TypeScript, read by pattern)`), and the run summary records the same
+  (`semantic_batching` in `summary.json` and the `--json` envelope's `summary`, run summary 1.3.0; `null` when
+  semantic batching encoded nothing). A resumed scan names the stopped run's reading, which its record keeps
+  (`unfinished.json` 3.9.0).
+- **`combine` and `patterns` read a whole scan history** given its first scan: every pass the history's review shows,
+  so a combination or a pattern can join concepts two passes found. Each member is the concept as review shows it,
+  at the path its file has now, with what Pass 4 read about it in its own pass; a member the history retired is left
+  out, and each run says how many. What they add is saved in the first scan.
+- **`review --json` gives each combination's ref** (`combination_refs`): its id in one scan, `<pass>/<id>` over a
+  scan history, by which `--set`, `export` and the window name it.
+- **A concept carries Pass 5's centrality.** `scan --patterns` and `patterns` write the centrality Pass 5 judged
+  for each concept it read to the concept's `product_centrality`, `null` where no answer judged it; a later `patterns`
+  run's value replaces it in the stored scan (its concept file and `metadata.json`), and `export` exports an exported
+  concept whose value changed again. The field is unchanged on the wire; whatever imports the drafts keeps a value and fills only a `null`.
+- **Pass 5 says when its combination answer fell short.** An answer of one combination where a list was asked is
+  kept, counted and said in the closing lines and the notice of `scan --patterns` and `patterns`.
+- **Pass 3 says what it chose from** (Bridge 3.0.0): each combination carries its candidate's `graph_score` (0 to 1)
+  and `candidate_rank` (from 1), null for one not chosen from a ranked candidate. Every candidate Pass 3 asked about
+  and did not ship (declined by the model, below the synergy floor, an incomplete answer, a failed call, folded into
+  a near duplicate) is a row of the held-back record with its score and rank (held-back record 2.1.0: `kind`,
+  `member_ids`, `candidate_key`, `graph_score`, `candidate_rank`), so `held`, `review --why` and `held --set` show and
+  judge it.
+- **A model reload is said when it happens.** A call whose server loaded a model the run already had loaded gives a
+  warning naming the model and the load time; a stage whose time left is priced from its own steps is priced again
+  from the steps that begin after it (`eta_basis` "stage-since-reload", status 1.6.0), and one priced by its
+  forecast counts the call among the calls it rests on, without its load time, as no recorded call's price includes
+  one. The closing line counts the same calls by the same rule.
+- **Before a model loads, a line says when the server will unload a model this run did not load**, with its size
+  and whether it was kept loaded indefinitely or until a time, so a model another program loaded is not unloaded
+  without a word. Every memory line names the model server it read; memory another model server on this machine
+  holds is not counted, and the line says so.
+- **A scan names the models it left loaded.** A model the scan loaded that the server keeps more than
+  `model-left-loaded-after` (10 minutes) past the scan's end gets a closing line with its size, until when, and
+  `ollama stop <model>` (`models.json` 1.9.0 records `resident_until` and `resident_pinned`). What the server held is
+  read as the run begins, before its first call, so a model the run's own setup calls loaded is named too; with no
+  such read the line says the scan cannot tell whether it loaded the model (`models.json` 1.10.0).
+- **A tree that changed while a scan read it is said at the scan's end.** The run summary (1.2.0, `tree_changed`)
+  carries the commit at the start and the end, the files the scan read that changed after it read them (by content
+  for a scan with a coverage plan, with git otherwise), and the cited files that differed from the commit when it
+  started; the closing line and a `Changed while scanning` line say so when it changed.
+- **The coverage record adds up across branches** (`arc.json` 1.16.0): `repository_share` is what every pass of a scan
+  history has read, on every branch, and `reread_share` what a pass read that an earlier one had, so the passes'
+  achieved shares less their re-reads sum to the repository's; the lineage line says "This branch has covered N%"
+  beside what every branch has covered together. A pass on another branch whose record could not be read, or is not
+  trusted, is named in `peers_not_read` and left out (`arc.json` 1.17.0), and the line says the branches together
+  have read at least the share it gives.
+- **A first scan has a time estimate.** Before this machine has recorded a stage's calls, the stage is priced from
+  starting rates taken from scans recorded on another machine, each the slow end of what was recorded for the stage
+  and the profile's models, so the estimate errs long; every figure resting on one says "a starting estimate from
+  another machine's recorded scans, set high on purpose", and this machine's own calls replace it stage by stage.
+  Each starting rate is a value `init` saves (`starting-balanced-discovery-seconds-per-kb` and the others
+  `init --json` lists).
+- **The time left says its range and what it rests on.** The status line reads `ETA ~3h 4m (2h 10m to 4h 30m, from
+  7 calls)`, or `a starting estimate` before there are calls, and the status file carries the range and the count
+  (`eta_low_s`, `eta_high_s`, `eta_calls`, and the whole scan's `scan_eta_low_s` and `scan_eta_high_s`; status
+  1.6.0). A stage is priced over its remaining calls from this machine's calls, this run's weighed as its own.
+- **`scan --time-budget 2h`** reads the largest share of the repository whose estimate, at its high end, fits the
+  budget, outward from the purpose as `--coverage` reads, and says what it chose and what the next share would take.
+  It needs a purpose as `--coverage` does, chooses before the scan starts and never stops a running one; on a first
+  run it chooses by the starting estimate and says so, and with no read that fits it is refused naming the smallest
+  read and its estimate. The choice is recorded as `time_budget` in `arc.json` (1.16.0), the saved plan (1.9.0) and
+  a stopped run's record (`unfinished.json` 3.9.0), and `scan --resume` reads that run's share again rather than
+  choosing anew, so the resume reads the files the stopped run chose; a resume given another budget is refused.
+- **`scan --profile <key>`** runs a model profile's models by its key (`fast`, `balanced`, `validated`,
+  `thorough`), standing for the model flags the models screen writes for it, so the scan's record and every step
+  it prints repeat those flags. A model flag given beside it keeps its own value; `--primary-model` beside it is
+  refused. `models --profile <key>` shows the models it runs, so the window's models card shows a profile chosen under
+  the scan form's More options and writes the flags it stands for in its place.
+- **Each profile says its time for your repository.** The models screen gives each profile's time to scan the whole
+  repository with its models beside the memory it needs, priced as a dry run prices a read. `models --workspace
+  <folder>` gives the same: each local profile's `time` under `--json` (`seconds`, its range, whether it is a
+  starting estimate or "at least", its basis and the sentence), and beside its memory in the table, with a notice
+  saying why when there is none (an address, a folder that is not there, `--two-phase`). The window's models card
+  asks with the scan form's path and shows the time it is given, and the first-run picker a scan shows where the
+  setup screens do not run says each profile's time for the repository being scanned.
+- **`combine --dry-run` and `patterns --dry-run`** count and price the calls each would make, and make none: no model
+  is readied or called and nothing is written. `combine` gives the candidates, less those an earlier run asked about,
+  one call each (and up to three on an answer that cannot be read, `combination-max-attempts`), with what each call
+  sends, and under `--workspace` the characterization before them; `patterns` gives the load-bearing calls as a
+  range, its combination call and its scoring call. Each prices in time by this machine's recorded calls, and on a
+  provider billed per token in money, and its next step runs the command as planned.
+
+### Changed
+
+- **Built with Go 1.27.3**, which distrusts compromised intermediate certificates when the program connects to a
+  remote endpoint (GO-2026-6809). The 2.1.1 and 3.0.0 releases were already built with it; a build from source now
+  uses it too (`toolchain go1.27.3`). A release now stops when govulncheck finds a vulnerability the program's code
+  reaches.
+- **The window's Alpine.js is 3.17.5** (from 3.14.9). Mermaid stays at 11.17.2: its 12.x single-file build bundles a
+  layout engine under EPL-2.0, and everything the window embeds is permissively licensed.
+- **Menus and the setup screens no longer pad a frame that gets shorter with blank rows**, and the live status
+  line's last frame is empty: Bubble Tea 2.1.0 draws a shorter frame from its first row.
+- **Dependencies:** `golang.org/x/text` 0.43.0 (GO-2026-6629, linked and not called), `golang.org/x/mod`, `sync`,
+  `sys`, `term` and `tools`, `charm.land/bubbletea/v2` 2.1.0, `charmbracelet/x/ansi` 0.11.9, `spf13/pflag` 1.0.10,
+  `BurntSushi/toml` 1.6.0 (a `pyproject.toml` or `Cargo.toml` that defines a key twice is now unreadable, so a scan
+  looking for a project's purpose skips its name and description), and `sashabaranov/go-openai` 1.43.0 (every
+  request to an OpenAI-compatible endpoint now carries `"stream": false`).
+- **A combination's members and a pattern's refs name their scan** (Bridge 3.0.0, ScanResult 3.0.0): every entry of
+  `contributing_concept_ids` and `concrete_refs` is written `<source_scan>/<id>`, from the record's own scan too, in
+  `scan --json`, the stored scan and an exported draft. Every pass of a scan history numbers its concepts from
+  `001-`, so a bare id named no concept once two passes are read together. A change of meaning, so a major: platform
+  reads major 3 only, and a scan written by 2.x is scanned again rather than written into.
+- **Review shows every shown pass's combinations, in one order.** Over a scan history it listed the first scan's
+  combinations alone; it now lists those of every pass whose concepts it shows, after the concepts, awaiting a
+  decision first, then by synergy, the larger combination, and the ref, and names a pass it does not show with its
+  combinations beside its concepts. A decision on a combination, and its export, go to the pass that holds it.
+- **Each next step is shown once.** Steps are sorted by priority and then reduced to one per command they run (flag
+  order and spacing aside), so a less urgent copy never hides a more urgent one; five are still shown.
+- **One rule reads every path a flag, a plan file or a model names** (`--only`, `--exclude`, `--pin`, `--drop`,
+  `--keep-dir`, a plan file's pins and drops, a located file): letter case is never read, a glob that names a real
+  file or folder matches only it, and a malformed glob, an absolute path or one leaving the repository is refused
+  before the scan starts.
+- **A dropped behaviour or file pick says why** wherever it is shown (the plan, a dry run, the setup screens).
+- **`--max-file-size-bytes` is listed under coverage and ranking**, not security limits, and its help says a larger
+  file is named, read in parts when the cap is raised, and characterized from its part.
+- `review`, `export`, `combine`, `locate` and `figure` take `--characterized-min-score`, `--textbook-score-ceiling` and
+  `--borderline-score-ceiling`, which the specification now reads.
+- `patterns` takes those three, `--confidence-high-floor`, `--confidence-medium-floor` and `--storage-retry-wait`, since
+  it now writes the scan's concept files and `SUMMARY.md`, which read them.
+- **A `combine` re-run asks about nothing twice.** It skips every member set an earlier run over the scan asked
+  about (the stored combinations and the held-back record's candidates, by the rule that folds near duplicates), so a
+  skipped candidate uses none of `--combination-max-candidates` and a run at a larger cap adds to the last; a
+  candidate whose call failed is asked again. A combination that is a stored one's near duplicate is folded into it,
+  where one that outscored a pending stored copy was added beside it. The help and the step that raises the cap say
+  so.
+- **A plain line's elapsed time is always `H:MM:SS`** (`[0:59:59]`, then `[1:00:00]`), where it switched from `MM:SS`
+  to `H:MM:SS` at the hour with nothing to say so.
+- **Discovery's stage names its batches and its calls** ("Pass 1 discovery (137 batches, 144 calls)"): its steps
+  are batches, and a file read in parts, or a batch whose files take more than one call, makes more calls than
+  batches.
+- **The authorship line says why a concept carries no contributors**, with a count for each cause, in the words the
+  lines record uses for a concept with no lines (`no declaration`, `other language`, ...) and two of git's own
+  (`outside git`, `blame failed`), or `not attributed` for a concept attribution never read; `summary.json`'s
+  authorship counts carry each as `without_<cause>`.
+- **The tests line ends with the `--tests` mode** ("; --tests off, so no model read a test"), and the pairing stage
+  ends with that line, so a pairing that took no time says what it did. It says what the mode did, never only what
+  it does: with no test paired, or the reading skipped, that no model read a test; at the pairing stage's end, that
+  a model reads the paired tests next; under `--tests source`, how many test files were read as a source, or that
+  none was (`tests.json` 2.7.0's `source_test_files`).
+- **The whole-scan estimate is priced stage by stage.** A dry run, the setup screens and the live status line price
+  every stage the scan's flags run (a stage a flag removes is left out), by one rule, from each stage's own calls on
+  this machine; a `--multi-model` scan is priced too. Until now the figure was discovery's time times a ratio of
+  earlier scans' whole time to their discovery's, whatever their flags, and only after three earlier scans with the
+  model. A stage that cannot be priced yet is named and the figure says "at least"; a stage whose calls are larger than
+  any recorded is said to be extrapolated. `arc.json` (1.16.0) and the saved plan (1.9.0) carry `whole_seconds`, its
+  range, `whole_not_priced`, `whole_starting` and `extrapolated`.
+- **`models --json` gives `relative_speed` only where a profile has no time** for the repository asked about.
+- **`combine` and `patterns` show the time left for their model calls**, forecast by the same counts their dry runs
+  give.
+
+### Fixed
+
+- **A remote endpoint that names OpenAI's own reasoning models works.** For a model named with the prefix `gpt-5`,
+  `o1`, `o3` or `o4`, or one of four GPT-6 names, the request library refused every request before sending it,
+  because it carried `max_tokens` and a temperature; each refusal was read as a passing failure and sent again
+  with backoff, so no call succeeded. The client now learns each refusal for the model, as it already learned an
+  endpoint refusing `max_tokens`, and sends the request without the field, then without the temperature and
+  `top_p`, so such a model runs at its own sampling settings, the only ones it takes.
+- **A run's status names a scanned folder as the scan read it**, absolute with every link followed, where it named
+  the folder as typed: `status`, `status --running` and the window showed a scan of `.` as `.`, which says nothing
+  from another folder.
+- **A stage's time left reaches zero when its calls are done.** It was counted as the forecast's calls less the
+  steps done, so a discovery stage of more calls than batches never reached zero; it is counted in calls now, and a
+  batch a cache answered counts its calls as done.
+- **The whole-scan estimate no longer reads "rest unknown" until Pass 3 starts.** Pass 3 is forecast at its cap from
+  the start, and by its candidates once they are counted.
+- **A run that sent its calls four at a time is no longer counted four times over.** A local scan before 2.0.0 sent
+  four requests at once and each recorded the time it waited behind the others; history now reads each such call at
+  its share of its stage's time, and a local server's calls are priced one after another.
+- **A drop of `./` (the files at the top) no longer skips every top-level folder.**
+- **The Mac app no longer says it runs on macOS 12.** The program it carries needs macOS 13 (Go 1.27); the app now
+  reads the oldest macOS from its own binaries when it is built.
+- **The log names `--max-file-size-bytes` for a file over the read cap**, where it named `--parallel`, and a
+  `--multi-model` scan counts such a file as too large instead of with the unreadable ones.
+- **A large file no longer loses the run in characterization.** Characterization sent the whole cited file, so a
+  file read in parts by discovery (after `--max-file-size-bytes` was raised) could produce a prompt several times the
+  window, which the server cut and the run stopped (1 h 53 m lost in one field review). It now sends the whole file
+  when it fits, judged by this machine's measured characters per token once 20 calls back it, else the part discovery
+  read the concept from, else nothing: the concept ships not characterized, with its held-back row and `not_asked`
+  in `components.json`, and the run warns how many. The plan, a dry run and the `Depth:` line count the files read in
+  parts, characterized from a part, and not characterizable at the window (`arc.json` 1.14.0, the saved plan 1.7.0),
+  and name the last two, so a plan says which file is characterized how (`characterized_from_a_part` and
+  `not_characterizable` in each estimate, `arc.json` 1.17.0, the saved plan 1.10.0).
+- **A `combine` re-run keeps every combination and its decision.** A combination's id is its position and a slug of
+  its name, and the files were overwritten, so a re-run could replace an approved combination with a pending copy.
+  A re-run now folds near duplicates into the stored records (a decided or exported one always wins), numbers new
+  ones after the highest stored id, refuses rather than overwrite an id, and writes its records to the scan's
+  `metadata.json`; a decision on a combination reaches `metadata.json` too.
+- **One rule decides whether a prompt fits** (`FitsContext` over `PromptBudget`), where three disagreed about the
+  room an answer needs.
+- **A single file refused before sending in discovery** is counted as left out for the call budget, never as a
+  failed batch.
+- **A cancel no longer races the run** for its state (the exit path now copies it under the run's lock), and
+  neither does a run's end, when a call still running ends as the run closes.
+- **The README says what each build groups by meaning.** It listed TypeScript and Python among semantic
+  batching's languages with no word that a release binary batched them by size only, and said Avenue B "skips
+  silently", where the scan's Avenue B line has said why since 2.0.0. A table now names each build's languages (all
+  four, in every build), held by a test to the list the program itself declares.
+- **Two shapes of TypeScript and Python end where they end.** A concept's lines and test pairing now read these
+  languages with the reader semantic batching uses (go-pbd's), where they had a pattern reader of their own. A
+  function whose template literal divides a property named `in` (`spend.in / 1000`) was read as running on to the
+  end of its file, taking the code after it, and a Python class or test followed by a module-level triple-quoted
+  string at column 0 took the string as its body, so `--tests evidence` could quote a line of that string as one of
+  the test's assertions. Over 9,119 files of real TypeScript, JavaScript and Python this moved three declarations'
+  lines, each to tree-sitter's, and nothing else.
+- **A component whose JSX text holds an apostrophe ends where it ends.** A concept's lines and test pairing read a
+  `.tsx` or `.jsx` file as semantic batching reads it, with its JSX read as JSX, where they read it as plain
+  TypeScript: an apostrophe in JSX text (`Here's {items.map((x) => {`) read as a string running to the end of its
+  line, which hid the brackets after it, so the component's lines could end early or late and a variable inside it
+  could read as a declaration of the file. Over 9,021 files of real TypeScript, JavaScript and Python this moved four
+  components' lines, each to its closing brace (three to where tree-sitter ends them; the fourth is in a file over the
+  default read cap), and nothing else.
+- **A declaration after a one-line class, or whose line ends in an operator, ends where it ends.** After a class
+  whose body opens and closes on its header's line (`class NotFound extends Error {}`), the next declaration was read
+  as more of that class's header, so an interface or enum after it had no lines and its members read as the class's;
+  and a declaration whose line ends in `-`, `*`, `/`, `%` or `^` ended a line early, while one ending in `count++`
+  ran on into the next. Both were go-pbd's reader's, fixed in its v0.10.1, which this release takes. Over 9,085 files
+  of real TypeScript, JavaScript and Python this moved one declaration, an interface after a one-line class, to where
+  tree-sitter ends it, and nothing else.
+- **Pass 3 and Pass 5 read their combination answers by one rule**, which reads an answer that is JSON as it came
+  before looking for JSON inside it, and keeps every shape either read before (a list bare, under any key or nested
+  in an object, one object, fenced or after prose, empty). Pass 5 read one combination whose member list was empty as
+  "no combinations"; it reads it as the one combination now. A list holding a null is unreadable, where Pass 3 read
+  `{"bridges":[null]}` as a bridge and crashed on it.
+- **A scan's note on answers cut at a size limit, or larger than their prompt asks, is printed after its last model
+  call.** It was printed before tests as evidence and Pass 5, so what either of them counted was never said.
+- **The profiles' speed notes say what recorded scans show.** The first-run picker, the models screen and
+  `models --json` (`relative_speed`) said Fast was the fastest, with a gap that grows with the repository (1.7x
+  Balanced on 4 files, more than 20x on 12), Validated 18x Balanced, and Thorough about Balanced's speed. Over the
+  scans recorded on one machine since, Fast is close to Balanced (1.4x faster on 8 files, 1.25x on 19, 1.27x
+  slower on 258) and finds about two thirds as many concepts per file; Validated takes 3.4x to 4x Balanced on 12
+  files of about 45 KB; and Thorough has not been measured at current settings. The "more than 20x" came from one
+  Balanced run whose model ran away while characterizing, which no later run shows. The README's profile table
+  says the same.
+- **A remote scan's time is no longer divided by its requests in flight twice.** History read a run on an endpoint
+  billed per token as it reads a local one, each call at its share of its stage's time, and the forecast then
+  divided by the requests in flight again, so a remote stage at four in flight was priced at a quarter of its time:
+  in a dry run, on the setup screens, under `--time-budget` (which then chose too large a share) and in the live
+  estimate. Only a local run's calls are read at their share now.
+- **A `--multi-model` scan's time left counts each file's merge where it is made, and reaches zero.** The merge of
+  a file's two extractions is made during extraction and was forecast in synthesis, so synthesis's time left
+  counted every merge already made (310 s against 250 s on three files) and the whole-scan figure counted them
+  twice while extraction ran. A file whose extractions the cache served, which still makes its merge call, and a
+  file refused before any call left their calls standing, so extraction's time left never reached zero; each file
+  now settles the calls its forecast counted, made, served by the cache or never to be made.
+- **Locating, characterization, Pass 2, tests as evidence and Pass 3 count their time left in what their forecasts
+  count.** Each is forecast by concept, batch or candidate, and was counted in calls: locating a concept takes a
+  call for each candidate file or none, so its time left reached zero after the first concept or never; a concept
+  asked again for its scores, a Pass 2 batch split after a failure, or a candidate asked again took two or more,
+  and a resumed Pass 2 counted the batches the stopped run had classified. Each now counts the steps it has left.
+- **The whole-scan estimate no longer reads "at least" for the rest of a run because of a stage that will not
+  run.** Avenue B's semantic discovery when the batch suggestion found no grouping, the batch planning a
+  `--changed` pass never does, and the discovery a resumed scan re-uses stayed in the forecast; each now leaves it,
+  and the run log says why.
+- **A model load no longer prices the calls after it.** A recorded call's time included the load its server
+  reported, and the estimate weighs a run's own calls as its own, so one 45 s reload moved the price of a stage's
+  last 100 calls by a quarter; a call's load time is now left out of what it is priced from. A stage priced from
+  its own steps no longer restarts its rate from the step that paid the load.
+- **A model the scan unloads itself is no longer said as another program's reload.** The discovery cache's check
+  unloads the discovery model so the answer it asks again meets a server that does not hold it, and the next call's
+  load was warned of as something else unloading the model, counted among the warnings, restarted the stage's rate
+  and was named in the closing line. It is the scan's own load now: written to the run log and counted apart
+  (`models.json` 1.10.0, `loads_after_own_unload`).
+- **The whole-scan estimate says when it rests on the starting rates**, as the stage's estimate does: the status
+  line reads `scan ~1h 20m (a starting estimate)`, or `(partly a starting estimate)` when some of its stages do,
+  the window shows the same line, and the status file carries `scan_eta_basis` (status 1.7.0); the run log names
+  the stages.
+- **A `--multi-model` read is forecast the concepts its earlier runs found.** The yield of concepts was counted per
+  character the extraction calls sent, their prompts included, and applied to the read's file bytes alone, so the
+  same files read again were forecast fewer concepts (half, on files of 3 KB), in a dry run and while the scan ran.
+- **A cancelled `--multi-model` scan says when its extraction cache was off, and why**, as a single-model scan says
+  it of the discovery cache; it said the run had kept no extraction answer, as if the cache had run and missed.
+- **A `--multi-model` file too long for each model's window is no longer a model failure.** Such a file's extraction
+  is refused before it is sent, and its row read "both models' extraction failed", so a scan of such files exited 3
+  though no model was sent anything. Its row now says it was too long for the model's window, the scan counts it with
+  the files that did not fit the window (`files_dropped_budget`), not with failed extractions or files over the read
+  cap, a scan of only such files exits 1 and says why, and the caveat and the steps offer a model with a larger
+  window. A multi-model scan sends each file whole to each model, and the `--max-file-size-bytes` help no longer says
+  it reads a file in parts there.
+- **`combine` over a scan history asks about nothing any of its passes asked about.** It read the held-back record of
+  the scan given alone, so over a history it asked again about a candidate a later pass's own Pass 3 had declined, and
+  given a later pass it read nothing a run over its history had recorded. It now reads the records and combinations
+  of every pass the review shows and of every scan the one given continues.
+- **A judgment recorded with `held --set` while `combine` runs is kept.** `combine` wrote the held-back record from
+  the copy it read before its first call, which wrote over a judgment recorded in between; it now reads the record
+  again when it writes, and adds its rows.
+- **A candidate whose call failed has one row, and none once it ships.** A re-run asks again about such a candidate,
+  and the failed row stayed when the combination then shipped, so `held` listed it and review counted it, and a
+  second failure added a second row. What the re-run decides now replaces the row, and the run says how many it
+  replaced.
+- **A combination answer is read from the array that holds combinations.** Pass 3 and Pass 5 took the first array
+  in an answer's object, in key order, for the list, so a model's list of reasoning steps written beside its
+  combinations was read as one combination with no name, which Pass 5 dropped, shipping no pattern with nothing
+  said. An array is now the list only when it holds a combination or is under the key the answer's schema names; an
+  answer that holds no combination at all is unreadable, which the pass says.
+- **`patterns` over a scan history finds a concept the model named without its pass.** Each member is named
+  `<pass>/<id>`, and an answer naming `001-name` or `001` found nothing, so a combination naming it was rejected and
+  a centrality result left its concept unjudged. Such a name now finds the one member it fits, and one that fits
+  more than one is said, with each.
+- **Discovery, classification and Pass 5's centrality and scoring read an answer as it came before anything inside
+  it.** Each took the first `[` to the last `]` of an answer first, so one item carrying a list of its own was read
+  through that list: one concept with its evidence lines as no concept and those lines as lost items, a centrality
+  result with an empty list as no result, and a scored pattern with a list of reasons as unreadable. They read by
+  the one list decoder now, which reads every shape they read before; a list that also holds a null or a stray value
+  keeps the items it holds and says what it left out, and a lone object naming no concept is unreadable rather than
+  a concept count of zero.
+
+### Security
+
+- **A repository you are handed cannot run a program through its own git settings.** A scan of a local folder runs
+  git there, and a repository's `.git/config` could name a program for git to run: a signature checker on `git log`, a
+  filter on `git status`, a diff converter on `git blame`. Each is switched off now, as two such keys already were; a
+  repository whose settings name a filter that cannot be switched off gets no git at all. A cloned repository was never
+  affected, and git-lfs no longer runs on a clone, so a file it tracks is read as its pointer.
+- **The window sends its secret only to a window that proves it holds it**, and a window that crashed or was stopped
+  without restarting onto an update leaves a secret no later window accepts. Before, another account on the same
+  machine that answered on the window's port was sent the secret, which stayed good.
+- **A key saved for an https endpoint is never sent over plain http.** The same host given as `http://` is refused,
+  naming its https address.
+- **The window ignores a history address whose scan id begins with `-`**, so a website cannot pass a flag to the
+  `review` it runs.
+- **The release workflows run the Docker and Zig actions at fixed commits**, as they already ran the signing and
+  goreleaser actions, since those steps run beside the release's secrets.
+
 ## [3.0.0] - 2026-10-21
 
 **This release renames five commands, six flags, 30 settings and budgets, and seven keys of
