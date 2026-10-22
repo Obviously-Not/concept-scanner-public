@@ -74,7 +74,9 @@ curl --proto '=https' --tlsv1.2 -fsSL https://raw.githubusercontent.com/Obviousl
 powershell -ExecutionPolicy ByPass -c "irm https://raw.githubusercontent.com/Obviously-Not/concept-scanner-public/main/install.ps1 | iex"
 #    It installs to ~/.local/bin (on Windows, %LOCALAPPDATA%\Programs\concept-scanner),
 #    puts that on your PATH, and checks the download against the release's
-#    checksums. Open a new terminal afterwards. Or run it via Docker (see
+#    checksums and their signature, and the program's own code signature, before
+#    it runs anything (on macOS and Linux this needs OpenSSL 3 or bc; every Mac
+#    has bc). Open a new terminal afterwards. Or run it via Docker (see
 #    "Running in Docker" below).
 
 # 3. Scan a local directory (or a remote repo URL).
@@ -1013,6 +1015,13 @@ being described here:
   requests from any other site, and needs a secret it hands your browser once;
   `ui` talks to it for checking whether the window is already open and for
   asking it to quit.
+
+On a machine with the `go` command, a scan of a Go repository also runs it there,
+for license analysis and semantic batching, and it may download the repository's
+dependencies: only from the Go module proxy you configured, or, for modules your
+`GOPRIVATE` names, from their own hosts, never from a host the repository's
+`go.mod` chose. It runs with cgo off for semantic batching, so no C compiler
+runs over the repository's code.
 
 Unlimited scans, no per-call costs, when the model server is your own.
 

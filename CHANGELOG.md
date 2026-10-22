@@ -4,6 +4,44 @@ All notable changes to concept-scanner are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and releases are the
 `v*` tags in this repository.
 
+## [4.0.1] - 2026-10-22
+
+**The three findings 4.0.0 left open from the security review after PHP2Shell are closed.** A Go repository you scan
+cannot make the go command fetch from a host it chose, or run your C compiler; the window's single-use code never
+appears on a command line; and the one-line installs check the release's signature before they run anything. No
+output shape changes.
+
+### Security
+
+- **The window's single-use code never appears on a command line.** `ui` opened the browser with the code in the
+  address it gave `open`, `xdg-open` or `rundll32`, and another account on the same machine can read a program's
+  arguments, so it could spend the code before the page did and get the window's secret. `ui` now writes the code into
+  a page in `~/.concept-scanner` that only your account can read and opens that page, which sends the browser on to
+  the window with the code in the address's fragment. The page is removed once its code is spent, or by a later `ui`
+  once its code has expired. It opens in the program your system opens `.html` files with: the browser, unless you
+  chose another. At a terminal, `ui` also prints the address the page would have opened, which signs in once, for a
+  browser that cannot read the page: one installed as a snap, as Firefox and Chromium are on Ubuntu, cannot read a
+  hidden folder. It is printed only at a terminal, never in a `--json` answer.
+- **The one-line installs check the release's signature before they run anything.** `install.sh` and `install.ps1`
+  compared the program with `checksums.txt` from the same release, which catches a damaged download and not someone
+  able to replace the release's files. They now also check `checksums.txt.sig`, the signature `concept-scanner update`
+  checks, against the two release keys written into each script, and install nothing when it does not verify. On
+  macOS and Linux the check uses OpenSSL 3 where it is, and otherwise `bc`, which every Mac has; a machine with neither
+  is refused with what to install. On Windows it is done in PowerShell itself, which has no other way to check one.
+  Each script first checks a known valid signature and a known forged one, so a checker that cannot do the job is
+  never believed. The program's own signature is checked too: on macOS its Developer ID signature from the
+  publisher's Apple team, with `codesign`; on Windows its Authenticode signature, by the publisher's name.
+- **A Go repository you scan cannot make the go command fetch from a host of its choosing, or run your C
+  compiler.** License analysis and semantic batching run the go command in the repository. With Go's default proxy
+  setting, which ends in `direct`, a module the proxy could not serve was fetched from the host its path names, a host
+  the repository chose and possibly one inside your network. Both now run it with your proxy list less `direct`:
+  modules come from your proxy, and only those your `GOPRIVATE` names come straight from their hosts. A setting of
+  `direct` alone becomes `off`, so when a dependency is neither in your module cache nor on a proxy, license analysis
+  reports that it could not load it instead of fetching it. Semantic batching's load also runs with cgo off, so the C
+  compiler no longer runs over the repository's cgo code: it groups the files of the build without cgo, the same
+  whether or not a C compiler is installed, so a Go file built only with cgo is batched by size and one built only
+  without it is grouped by meaning. License analysis of this repository is byte for byte what it was.
+
 ## [4.0.0] - 2026-10-22
 
 **A combination's members and a pattern's refs now name the scan they belong to, which makes this a major
