@@ -134,7 +134,7 @@ takes the value saved with `init`, else the built-in one.
 **Cause:** a flag, a value saved with `concept-scanner init --<key>`, or a
 `CS_BUDGET_*` variable changed a value this run reads. The line names each one
 and where it came from, and a scan records them in its `models.json` as
-`settings_changed`. Every run also writes the list as `settings_changed` in its
+`settings_changed`, and in its `--json` answer's data under the same name. Every run also writes the list as `settings_changed` in its
 `status.json` and in its first `--progress jsonl` event (`run_start`), `[]`
 when nothing changed.
 
@@ -152,6 +152,108 @@ file. It is ignored; the rest of the section applies.
 
 **Fix:** `concept-scanner init --reset <key>` removes it. `init --reset all`
 leaves it, because a key this version does not know may be a newer version's.
+
+## A private GitHub repository: "git clone failed", or "a sign-in keeps its token in this machine's keychain, and there is none here"
+
+A scan of `https://github.com/<owner>/<repo>` clones it with a GitHub token when one is
+given, and without one otherwise. The token is `CONCEPT_SCANNER_GITHUB_TOKEN`, else
+your GitHub App's in the keychain, else `GH_TOKEN` or `GITHUB_TOKEN`. Run
+`concept-scanner accounts list` first: it says where the token would come from, never
+the token.
+
+- **No token, and the repository is private.** GitHub answers a clone of a private
+  repository without a token as though the repository were not there, and the scan
+  offers `accounts sign-in github` first. Sign in with your GitHub App (README,
+  "Your own GitHub App"), or set `CONCEPT_SCANNER_GITHUB_TOKEN` (or `GH_TOKEN`) to a
+  token whose account can read the repository. Your own git credential helpers are
+  asked too, so a repository `git clone` reads for you is read by the scan.
+- **A token was given and GitHub refused it.** The scan renews a token the keychain
+  keeps once, then clones again with no token, where your git credential helpers
+  answer; the message says both. If both fail: your GitHub App may not be installed
+  on the account that owns the repository (Settings, Developer settings, GitHub Apps,
+  your app, Install App), or not given that repository, or not given Contents
+  read-only; or the token in `CONCEPT_SCANNER_GITHUB_TOKEN`, which comes before the
+  keychain, is stale. `accounts sign-in` says which token a scan will read.
+- **"the ... token kept in the keychain expired ... and cannot be renewed".** Its
+  refresh token lasts six months; sign in again.
+- **"no GitHub client is given".** `accounts sign-in` uses a GitHub App you register
+  (README, "Your own GitHub App"); give its Client ID with
+  `concept-scanner init --client-source github --client-id <client-id>`. It needs no
+  client secret.
+- **"device_flow_disabled" from GitHub.** Tick Enable Device Flow on your GitHub App's
+  page and sign in again.
+- **No keychain, or one that cannot keep a check value.** A container, the GitHub
+  Action and a Linux machine with no desktop session have none, so `accounts sign-in`
+  is refused before it sends you to GitHub, and says why; nothing is written to a file
+  in its place. Give the token in `CONCEPT_SCANNER_GITHUB_TOKEN` instead.
+- **"this machine's keychain did not answer ... within ...".** The keychain may be
+  locked and waiting for its password. Unlock it, or give it longer with
+  `--keychain-wait` (on the command, or saved with `init --keychain-wait <duration>`).
+  A scan asks the keychain only after a sign-in kept a token there; `accounts
+  sign-out github` removes both the token and that record.
+- **"the sign-in to ... was not finished within ...".** `accounts sign-in` waits up
+  to `--sign-in-wait` (fifteen minutes) for you to finish at the provider, then stops
+  and closes what it listened on. Run it again.
+- **An address the scan clones with your own git credentials instead.** Only the
+  `https://github.com/<owner>/<repo>` form reads the token; `git@github.com:...`,
+  `ssh://` and an address carrying a user are cloned as git would clone them, with your
+  ssh keys or credential helper.
+
+## A Google Drive folder, a Slack channel or a Discord channel: the fetch was refused
+
+A scan of `gdrive://...`, `slack://...` or `discord://...` reads with your own token
+and calls no model until the fetch is done, so a refusal here is the provider's or
+the target's. `concept-scanner accounts list` says where each token would come from,
+never the token; PROVIDERS.md, "Connected sources", says how to make one.
+
+- **"no ... token is given".** None of these is read without one. Sign in to Google
+  Drive (`accounts sign-in google_drive`), or give a Slack or Discord token on stdin
+  to `accounts sign-in slack` or `discord`, or set its variable. A variable is read
+  before the keychain.
+- **"the scan target ... is not a ... target this program reads".** Each source
+  takes one form: `gdrive://folder/<id>` or `gdrive://file/<id>`,
+  `slack://<team-id>/<channel-id>`, `discord://<server-id>/<channel-id>`. A copied
+  link (`https://drive.google.com/...`, `https://<workspace>.slack.com/...`,
+  `https://discord.com/channels/...`) is not read as one: take the ids out of it.
+- **Google Drive: HTTP 401, 403 or 404.** A 401 is a token Google no longer takes:
+  sign in again (a client whose consent screen is in Testing gets refresh tokens
+  that last seven days). A 404 is a folder or document this account cannot see, or
+  an id that is not there. `gdrive://folder/<id>` naming a document, or
+  `gdrive://file/<id>` naming a folder, is refused, saying which to give. One
+  document Drive refuses for itself (a file it will not export, or one this
+  account may see and not download) does not stop the scan: it is named as not
+  read with Drive's reason. A refusal for the whole project (a quota, the API not
+  enabled) stops it.
+- **Slack: `invalid_auth`, `not_in_channel`, `channel_not_found` or `missing_scope`.**
+  `invalid_auth` is a token Slack no longer takes. `not_in_channel` is a bot token
+  for a channel the bot was not invited to (a user token reads every public
+  channel). `missing_scope` names the scope the token lacks; the manifest in
+  PROVIDERS.md gives all five. "the Slack token given is for the workspace ..." is a
+  token of another workspace than the target names.
+- **Discord: "... came back empty ..., at or above the share of 0.50".** The
+  bot's Message Content Intent is off (Discord sends such a bot every message
+  empty but one that mentions it): turn it on in the Developer Portal (the
+  application's Bot page, Privileged Gateway Intents), then scan again. `code 50001`
+  (Missing Access) is a bot that cannot see the channel: invite it to the server, or
+  give it View Channels and Read Message History there. A forum is refused: give a
+  post's own id, which is a thread.
+- **"Note: N documents of the M given were not read: ..." or "Read N days of the
+  ... channel's messages; not read: ...".** Not a refusal: the fetch names what it
+  did not read, by why (an image or a shortcut; a document over
+  `--drive-max-document-bytes`; documents past `--drive-max-documents`; one Drive
+  refused; a Sheet's other tabs, where the Google Sheets API is not enabled; a
+  channel's messages past `--channel-max-messages`, messages with no text, a
+  thread Slack would not give, a person Slack would not name, or a Discord thread,
+  which is a channel of its own; anything past `max-repo-size`). `source.json`
+  beside the scan names every one.
+- **"it asked this fetch to wait ..., longer than the 2m0s it waits at a time", or
+  "it was still refusing after 6 requests".** The provider is rate-limiting this
+  account or app, or failing; run the scan again later. Shorter waits are waited
+  out as the provider says, up to five times a request.
+- **"the request to ... failed".** No answer came back at all: check this
+  machine's connection to the provider, then scan again.
+- **"writing what the fetch read to this machine failed".** The disk is full or
+  the data directory cannot be written; free space or fix its permissions.
 
 ## "repository too large" or "too many files"
 
@@ -381,6 +483,9 @@ Several distinct causes, in order of likelihood:
 1. **Everything found was scored below the minimum distinctiveness score and held back.**
    The summary says how many were also classified `textbook`. Re-run with
    `--include-textbook` to include them, or change `characterized-min-score`.
+   A mechanism the model places at `textbook` or `adapted` on technical
+   distinctiveness scores 0.2 or 0.4, below the minimum of 0.50;
+   `--characterized-min-score 0.3` holds back only `textbook`.
 2. **A verbose frontier model was the multi-model primary on a thin repo.** Very
    capable models can produce an empty set on small inputs. Use a lighter
    primary model (see "Choosing a model" in the [README](../README.md)), or scan a
@@ -415,6 +520,14 @@ reliably. If you are seeing this error:
    or try a different `--secondary-model`.
 
 ## "pass 2 validation degraded on batch N of M": the scan stopped
+
+**Since 2026-10-28 this is not what an ordinary scan does.** A batch the
+classifying model cannot classify no longer stops your scan: the run carries on
+and tells you what it fell back on, naming each concept it had to take the
+discovering model's own score for and counting them in the run's summary, its
+caveat and `--json`'s notice. So read this section only if your run asked for
+the strict behaviour, which a measurement does on purpose; otherwise look for
+the sentence about a classification that is not independent.
 
 **Symptom:** a scan stops with exit code 3 and an error saying Pass 2
 validation degraded on a batch and strict validation is on.
@@ -696,7 +809,7 @@ window holds. A document past either was not read for the purpose, and
 `intent.json` lists it under `documents_not_sent`; untick a larger one to make
 room.
 
-**"Semantic batches, which no estimate prices, made N more call(s)".** The
+**"Semantic batches, which no estimate prices, made N more calls, sent ..., and took ...".** The
 estimate counts the size-based discovery batches. Semantic batching decides its
 batches with a model call during the scan, so it cannot be priced in advance;
 its calls are reported apart and recorded in `arc.json`.
@@ -859,7 +972,7 @@ scan's commit pointing at what was read.
 what the gate measured, who the verdict points at, and, when a number decided
 it, the setting by the key you would give `init`, with its built-in value, any
 value you saved, and how to change it. `scan --verbose` prints the same for every
-concept held back at the end of the run. Two of the verdicts are about what a
+concept held back at the end of the run. These verdicts are about what a
 concept says rather than how it scores:
 
 - **`required_field_missing`**: characterization answered, and after the
@@ -884,16 +997,21 @@ the scan history held back, each row with a ref, and `held <scan-id> --set
 <ref>=wrong --note "why"` records that the concept should have shipped
 (`=right` that the hold was right). That judgment is what tells a gate that is
 right from one that is broken; until somebody makes it, `held` reports only how
-many holds are waiting. The window's Held back tab, beside a scan's review,
+many holds are waiting. Each concept row shows the lines of the file it cites
+and their excerpt, where it has them, so a hold can be judged from the code, and
+`held --json` also gives the concept's scores and, on a rescue or corroboration
+row, the witnesses that decided it. The window's Held back tab, beside a scan's review,
 does the same. A row recorded for a concept that shipped (`axes_unanswered`,
-`copied_test_data_field`, `characterization_incomplete`) is listed apart and
-takes no judgment.
+`copied_test_data_field`, `characterization_incomplete`, and
+`corroboration_not_judged`, a concept the corroboration gate could not judge
+for want of its distinctiveness axes) is listed apart and takes no judgment.
 
 ## A combination is missing, or `combine` asked about fewer candidates than the cap
 
 **Symptom:** a combination you expected is not among a scan's, or `combine`
 at a larger `--combination-max-candidates` asked about fewer candidates than
-the cap, or said every candidate it found was asked about by an earlier run.
+the cap, or said every candidate it found was the same combination as one an
+earlier run asked about.
 
 **Cause:** Pass 3 asks the model about the top candidates by graph score, with
 a share kept for combinations of three or more concepts and a penalty for
@@ -902,8 +1020,10 @@ smaller one. A re-run of `combine` asks only about member sets no earlier run
 asked about, over the scan, any pass of its scan history it reads, or a scan
 it continues: the stored combinations, and the candidates the held-back
 records hold. A candidate the dedup rule calls one of those (it shares most of
-its concepts with it) is skipped too, and a skipped candidate uses none of the
-cap. A candidate whose call failed is asked again, and what that run decides
+its concepts with it, or at least three, by default) is skipped too, though no
+run asked about it, so the count of skipped candidates `combine` says can be
+far larger than the candidates earlier runs asked about; a skipped candidate
+uses none of the cap. A candidate whose call failed is asked again, and what that run decides
 replaces its row.
 
 **Fix:** `held <scan-id>` lists what each candidate that did not ship came to,
@@ -1223,9 +1343,12 @@ unaffected either way.
 closing lines and its notice, and finds one pattern at most.
 
 **Cause:** Pass 5 asks the model for a list of combinations of the concepts it
-judged load-bearing. The model answered with one combination where a list was
-asked. That one is kept, and read like any other, but the model may have found
-others it did not name, so the run says so rather than reading as complete.
+judged load-bearing, in the shape `{"combinations": [...]}`. The model answered
+with one combination anyway, where a list was asked. That one is kept, and read
+like any other, but the model may have found others it did not name, so the run
+says so rather than reading as complete. Before the request stated the shape,
+`qwen3-coder:30b` answered this way on every run measured; with it stated, it
+answered with a list.
 
 **Fix:** run `patterns <scan-id> --workspace <path>` again, which asks again
 over the stored scan without scanning; a model that answers with a list there
@@ -1328,6 +1451,46 @@ the refused address was the saved one, that same `init` replaces it. A
 parameter whose name only looks like a key (`sort_key=`) is refused too; an
 endpoint that needs one cannot be used as typed.
 
+## A source that holds other people's words: the preview, or a refusal before anything is sent
+
+A scan of a Google Drive folder, a Slack channel or a Discord channel, or a command
+run later on one, refuses rather than send its text off this machine unaccepted.
+
+- **"the run would send its blurred text ... to ..., which is not this machine".**
+  Read the whole text in the file the message names, under
+  `~/.concept-scanner/previews/`, which only your account can read. If you accept
+  it, type the scan again with `--accept-preview <digest>`, which the message gives
+  in full; no step runs it for you. A run whose text, server or models differ (a
+  `--primary-model` changed, a model added) has a digest of its own and is asked
+  again. `--redact` chooses fewer classes; `--redact none` blurs nothing and is
+  asked about the same way.
+- **"... on this machine, which runs <model> on <host>".** The Ollama server here
+  sends that model's requests to another machine (a cloud model, after `ollama
+  signin`), so the text is blurred and previewed as for a server elsewhere. Choose a
+  model `ollama show <model>` reports without a remote host to read the text as it
+  is.
+- **"this source holds other people's words: the model server at ... runs a model
+  of this run on another machine, so nothing was sent to it".** A model chosen
+  after the scan's gate asked about the models (on the models screen) is one the
+  server runs elsewhere. Run the scan again, whose gate asks about every model
+  first, or choose another model.
+- **"--redact and --accept-preview apply only to a source whose text leaves this
+  machine".** The server on this machine runs each of the run's models itself, so
+  nothing is blurred: drop both flags. "--redact holds an empty name" is a
+  trailing comma or `--redact=` with nothing after it.
+- **"scan ... was read from a source that holds other people's words, and combine
+  would send ...".** `combine`, `locate`, `patterns` and `figure draw` send a stored
+  scan of such a source off this machine only to the server and models its preview
+  was accepted for, and the files under `--workspace` only while they are still the
+  text accepted (a later fetch of the source writes them as the source wrote them).
+  Run the command on this machine, or scan the source again sending to that server,
+  through its preview, and run the command on that scan.
+- **"another run (process N) is reading this source's fetched copy".** Two scans of
+  one such source at once are refused, since the gate rewrites the fetched copy in
+  place. Wait for the other to end (`concept-scanner status`), then run this one
+  again. If no scan is running as that process, remove the lock file the message
+  names.
+
 ## "--local-only: the model server at ... runs a model of this run on another machine"
 
 **Cause:** the local Ollama said it forwards that model to another machine
@@ -1338,6 +1501,51 @@ would leave this machine. Nothing was sent to it.
 host, or run without `--local-only` if the code may go to the host the message
 names. If the message says the server revealed it only in an answer, that one
 request's prompt did leave the machine, and no further request was sent.
+
+## "N documents of the M given were not read", or `upload add` refused a document
+
+A scan of `documents:<path>`, and `upload add`, name every document they did not
+read and why; `source.json` beside the scan lists them all.
+
+- **"it has no text layer"**: the PDF's pages are images, as a scanned page is.
+  This program reads only text a PDF holds and recognises no text from an image.
+  Export the document again as a PDF with text (most scanners and office
+  programs can, under a name such as "searchable PDF"), or as Word or text.
+- **"its text layer is not readable"**: the PDF holds text, but too few of its
+  characters are letters (`document-min-letter-share`, 0.30), which is what a
+  font that does not map its glyphs to characters gives. Export it again, or
+  lower the share with `--document-min-letter-share` if the text is right.
+- **"a kind this program does not read"**: it reads `.md`, `.markdown`, `.txt`,
+  `.text`, `.pdf` and `.docx`. Save a spreadsheet, a legacy `.doc` or a web page
+  as one of those first.
+- **"over the ... one document may be (document-max-bytes)"**, "**passed ...
+  bytes, the most kept**" (`document-max-text`), "**declares N pages**"
+  (`document-max-pages`) or "**its body is ... over the ...**"
+  (`document-max-part-bytes`): a bound held. Each is a setting: give the flag
+  for one run, or save it with `init`.
+- **"reading it took longer than ... (document-read-timeout)"** or "**needed
+  more than ... MiB of memory (document-read-memory)**": the process reading
+  that document was stopped. An honest document reads in well under a second;
+  raise the bound for one run if yours is very large, and otherwise treat the
+  file as damaged.
+- **"reading it nested deeper than the ... MiB of stack"**: the document nests
+  its parts deeper than any honest one does, the shape of a file built to
+  overflow its reader; that process ended, and the scan went on.
+- **"the process reading it ended without an answer"**: the reader crashed on
+  the file, which it reads in a process of its own so the scan goes on. The
+  reason quotes why; open the document and save it again.
+- **"it could not be read: permission denied"** or **"a folder that could not
+  be read"**: this program may not open that file or list that folder. The
+  rest of the folder was read. Give your account read access to it, or copy
+  the document elsewhere.
+- **"its text would be written to ..., which is the folder's own ..."**: two
+  documents would be read under one name (`notes.pdf` is read as
+  `notes.pdf.md`, which your own `notes.pdf.md` keeps). Rename one of them.
+  `upload add` refuses such a document rather than keep one a scan would not
+  read.
+- **"a hidden file"**, **"a hidden folder"** or **"a link, which is not
+  followed"**: a name starting with a dot is skipped, and no link is followed.
+  Copy the document itself into the folder.
 
 ## "symlink escapes repository"
 
@@ -1405,6 +1613,34 @@ and only ever tells you: installing is still `concept-scanner update` and your
 yes. To stop it, `concept-scanner update --auto-check off`; to start it again,
 `--auto-check on`. The setting lives in `~/.concept-scanner/settings.json`, in
 your home folder and nowhere else, so a repository you scan cannot change it.
+
+## A re-read characterized again a concept whose file had not changed
+
+A re-read of changes (`--changed`) re-runs each discovery call that held a changed
+file, so it finds again the concepts of the files beside it. Such a concept keeps
+the characterization an earlier pass of the scan history gave it, with no model
+call, only when all of these hold: its file has not changed since that pass; it is
+the same finding (the same file, and the same name or the same code symbols
+named); that earlier answer was complete, scored its technical distinctiveness,
+and has not been changed since (by `combine --workspace`, or a correction); and
+the drafting model, the model as
+served (its digest, the server's version and address), the request's settings
+(its output budget, a think setting), the prompts as this version builds them
+around the text they carry (the file, or the part of it the request carries, with
+a test's data masked), and the file's content are what that pass used. The scan's
+characterization stage prints how many it carried and, when a concept with such a
+copy was asked again, why; one whose file, and the part of it discovery read the
+concept from, are too long for the drafting model's window is sent nothing, and
+the stage says so apart.
+
+So a pass run with another `--draft-model`, against another server, after a model
+was pulled again, with another output budget or prompt setting, after an
+upgrade that changed a prompt or how a file's text is put into one, or once a
+large file that was sent whole is sent as a part (this machine's recorded calls
+decide how much of it fits) asks again. A pass made by a version before this
+behaviour recorded nothing to carry by, so the first re-read after an upgrade
+asks again. `--two-phase` never carries. Each carried concept names its earlier
+copy in `union.json` (`characterized_by`).
 
 ## A renamed file's concepts were retired instead of following it
 

@@ -257,12 +257,15 @@ so `--two-phase` raises the per-request timeout floor to 30 minutes (override wi
 before a remote scan's first model call all give an estimate in US dollars. It
 is the same forecast the console prices for time, multiplied by the model
 shortlist's per-token prices, and it names the date of those prices (and their
-age when they are older than 90 days). It covers discovery; the whole scan is
-given as a range only after three earlier priced scans with the same model,
-because the passes after discovery (characterization alone is one call per
-concept to the drafting model) are priced from history. When there is no
-figure it says why: a model with no listed price, a call size not known yet,
-`--two-phase`, or `--multi-model`. A run on Ollama, wherever it runs, or on an
+age when they are older than 90 days). It covers discovery (under
+`--multi-model`, the per-file extraction), and since 4.0.0 the whole scan as a
+range: every stage the scan's flags run, priced from the calls each is forecast
+to make (characterization alone is one call per concept to the drafting
+model), the range taken from how many concepts the read is expected to find. A
+stage it cannot price yet is named, and the whole is then at least what it
+says. (Until 4.0.0 the whole was given only after three earlier priced scans
+with the same model.) When there is no figure it says why: a model with no
+listed price, a call size not known yet, or `--two-phase`. A run on Ollama, wherever it runs, or on an
 OpenAI-compatible server at a loopback address, is not billed per token and is
 never priced: it shows no money, and the scan's cost line says "Ollama, not
 billed per token" or "an OpenAI-compatible server on this machine, not billed
@@ -394,6 +397,111 @@ between a flag and a saved value.
 - A value outside its range is refused, naming the range.
   `concept-scanner init --json` lists every value with its range (`range_text`), the value in
   force, where it came from and the commands that read it.
+
+## Connected sources: GitHub, Google Drive, Slack and Discord
+
+A scan reads a private GitHub repository, a Google Drive folder, a Slack channel or
+a Discord channel with your own account (README.md, "Scanning a private GitHub
+repository" and "Scanning a Google Drive folder, a Slack channel or a Discord
+channel"). This program has no client, app or bot of its own at any of the four:
+you make one once, at the provider, and the token it gives stays on this machine,
+in its keychain or in a variable you set.
+
+**GitHub** (`https://github.com/<owner>/<repo>`; a repository you have checked out
+is scanned as a folder, with no token): a **GitHub App** of your own, which asks
+for one permission, Contents read-only, and reads only the repositories of the
+accounts you install it on. README.md, "Your own GitHub App", gives the steps:
+register it with Enable Device Flow ticked and its webhook off, install it, then
+`init --client-source github --client-id <client-id>` (its Client ID; no client
+secret) and `accounts sign-in github`. Its token lasts eight hours and is renewed
+as a scan needs it. With no sign-in, a scan uses `CONCEPT_SCANNER_GITHUB_TOKEN`, or
+`GH_TOKEN` or `GITHUB_TOKEN` as GitHub's CLI and Actions set them, and your own git
+credential helpers answer when GitHub refuses a token.
+
+**Google Drive** (`gdrive://folder/<folder-id>` or `gdrive://file/<file-id>`; the id
+is the one in the folder's or the document's address in Drive):
+
+1. In the Google Cloud console, in a project of your own, enable the Google Drive
+   API and the Google Sheets API, set up the OAuth consent screen (add yourself as a
+   test user while it is in Testing), and create an OAuth client of type **Desktop
+   app**. A Sheet's tabs are read through the Sheets API, with the same
+   `drive.readonly` access; where it is not enabled, a Sheet is read from Google's
+   CSV export, its first tab alone, and the scan says so.
+2. Give its id and secret once (Google calls a Desktop app's secret not
+   confidential; it is kept beside your API keys, readable only by you):
+
+   ```bash
+   concept-scanner init --client-source google_drive --client-id <client-id>
+   printf '%s' "$CLIENT_SECRET" | concept-scanner init --client-source google_drive --with-client-secret
+   ```
+
+   `--with-client-secret` is a switch: the secret is read from stdin, never given
+   after it.
+
+3. `concept-scanner accounts sign-in google_drive` prints an address to open; Google
+   sends your browser back to this program on 127.0.0.1, and the token is kept in
+   the keychain. It asks for `drive.readonly` and nothing else: read access to your
+   Drive, which is what reading a folder's documents needs (Google's device sign-in
+   offers no scope that reads a folder). Google says a client whose consent screen
+   is in Testing gets refresh tokens that last seven days, after which you sign in
+   again.
+
+**Slack** (`slack://<team-id>/<channel-id>`; the channel's id is at the bottom of its
+details, and the workspace's id is the `T...` in the address Slack's web app shows,
+`app.slack.com/client/<team-id>/...`; an Enterprise organisation's `E...` id is read
+when the token's workspace is in that organisation):
+
+1. At https://api.slack.com/apps, create an app **from a manifest**, in your
+   workspace, with this manifest:
+
+   ```yaml
+   display_information:
+     name: concept-scanner reader
+   oauth_config:
+     scopes:
+       user:
+         - channels:history
+         - channels:read
+         - groups:history
+         - groups:read
+         - users:read
+   settings:
+     token_rotation_enabled: false
+   ```
+
+2. Install it to your workspace, and copy its **User OAuth Token** (`xoxp-...`).
+   It reads what you can read: every public channel, and the private channels you
+   are in. A bot token (`xoxb-...`) of an app with the same scopes as bot scopes
+   works too, for a channel the bot was invited to.
+3. Give it once: `printf '%s' "$SLACK_TOKEN" | concept-scanner accounts sign-in slack`,
+   or set `CONCEPT_SCANNER_SLACK_TOKEN`.
+
+Slack's own sign-in is not used: it takes a loopback redirect only from an app that
+has turned on its proof-key setting, which cannot be turned off again, and only as
+`http://localhost`, where this program's sign-ins listen on the literal address
+127.0.0.1.
+
+**Discord** (`discord://<server-id>/<channel-id>`; turn on Developer Mode in
+Discord's settings, then right-click the server and the channel, Copy Server ID and
+Copy Channel ID; a thread's own id reads that thread):
+
+1. At https://discord.com/developers/applications, create an application, open its
+   **Bot** page, reset and copy its token, and turn on **Message Content Intent**
+   (without it, every message reaches a bot with no text, and the scan says so).
+2. Invite the bot to your server: OAuth2, URL Generator, the `bot` scope, with the
+   **View Channels** and **Read Message History** permissions, and open the address.
+3. Give its token once: `printf '%s' "$DISCORD_TOKEN" | concept-scanner accounts sign-in discord`,
+   or set `CONCEPT_SCANNER_DISCORD_TOKEN`.
+
+Discord gives no person's sign-in the right to read a server's channels, which is
+why a bot reads them.
+
+**Where each token goes.** Only to the provider it is for, in a request header,
+over https; never in a file this program writes, a log, an error or a `--json`
+answer. `accounts list` says where each comes from, never what it holds, and
+`accounts sign-out <source>` removes this machine's copy. A `.env.local` cannot set
+any of these variables, so a repository you scan cannot choose whose account a scan
+reads with.
 
 ## Privacy
 

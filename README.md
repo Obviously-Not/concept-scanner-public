@@ -29,7 +29,8 @@ Most people never need a terminal:
 For scans on your own computer, install [Ollama](https://ollama.ai) and open it;
 the window's Settings says whether it is running.
 
-The window opens in your browser. Choose a folder and scan it, watch it run,
+The window opens in your browser. Choose a folder and scan it, or upload
+documents (Markdown, text, PDF and Word) and scan those, watch it run,
 review what it found, approve, reject or export it, and choose the model, or a
 cloud provider and its key, in Settings. The scan screen's **Models for this
 scan** card picks each model a scan calls, as the terminal's models screen does,
@@ -278,9 +279,9 @@ Any installed Ollama model is accepted; unrecognized tags get a one-line note an
 2. **Validate** the target before scanning: a symlink that escapes it or a device file refuses the scan (remote clones also get repository size / file-count caps), and a `.zip` that would expand like a zip bomb is named in a note and left unopened, as every archive is.
 3. **Distill** each file with Principle-Based Distillation (PBD) via the local model.
 4. **Discover** candidate concepts.
-5. **Locate, then characterize.** A concept whose cited file did not resolve is first located (a path the model mangled is corrected, a location listing several files takes the first that exists, and the model is asked which candidate file holds it), so a concept only that step can place is still characterized. Each concept is then scored on the four core engineering axes (technical distinctiveness, implementation depth, problem specificity, generality) plus supplementary signals (commonness, paradigm-shift). An axis the model did not score is `null`, never 0, and the text output says "not scored". Of the commercial axes, defensibility is emitted as `null`: concept-scanner doesn't have your market context, so whatever reads the drafts next (your review process, or the app that imports them) fills it in. Product-centrality is `null` too unless Pass 5 ran over the concept (below), which writes the centrality it judged; whatever reads the drafts next fills a `null` and keeps a value. The output also carries the concept's key insight, inputs/outputs, components, and comparable techniques. A characterized concept still missing a field it requires (its category, technical approach, key insight, inputs and outputs, or components and how they interact) after the scanner has asked the model for the missing fields once more is held back (`required_field_missing`) rather than shipped incomplete.
+5. **Locate, then characterize.** A concept whose cited file did not resolve is first located (a path the model mangled is corrected, a location listing several files takes the first that exists, and the model is asked which candidate file holds it), so a concept only that step can place is still characterized. Each concept is then scored on the four core engineering axes (technical distinctiveness, implementation depth, problem specificity, generality) plus supplementary signals (commonness, paradigm-shift). The model answers each core axis and commonness with one of four named levels, each a property a mechanism has, which the output records as 0.2, 0.4, 0.6 or 0.8; paradigm-shift is a whole number from 0 to 3. An axis the model did not score is `null`, never 0, and the text output says "not scored"; a scored one is shown with what its value means on the axis's scale, as `0.60 (unusual on the scale)`, which is the same whether the model answered with the level's name or with the number. Of the commercial axes, defensibility is emitted as `null`: concept-scanner doesn't have your market context, so whatever reads the drafts next (your review process, or the app that imports them) fills it in. Product-centrality is `null` too unless Pass 5 ran over the concept (below), which writes the centrality it judged; whatever reads the drafts next fills a `null` and keeps a value. The output also carries the concept's key insight, inputs/outputs, components, and comparable techniques. A characterized concept still missing a field it requires (its category, technical approach, key insight, inputs and outputs, or components and how they interact) after the scanner has asked the model for the missing fields once more is held back (`required_field_missing`) rather than shipped incomplete. Each concept that ships is then judged on three distinctiveness axes, what it does, why it is there and where it sits (`axis_distinctiveness`, one drafting-model call a concept; `--no-axes` skips it), and so is each concept the minimum distinctiveness score held back, which ships after all when two of its technical distinctiveness, `why` and `where` reach the rescue's moderate floor (`score-rescue-moderate-floor`, 0.4) or one reaches its strong floor (0.5): recorded as `rescued_below_minimum`, counted in `score_rescued`, its extra calls in `score_rescue_calls`. Then the **corroboration gate** holds back (`not_corroborated`, counted in `corroboration_held`) a concept the model scored at or above the commonness ceiling, or below both the distinctiveness and depth floors, unless two of its technical distinctiveness, `why` and `where` reach the moderate floor (`corroboration-moderate-floor`, 0.4), or, below both floors only, one reaches the strong floor. A concept that trips a bar without the axes that decide it (none at all, or a missing `why` or `where` whose highest score could have kept it) is not judged and ships, recorded as `corroboration_not_judged` and counted in the field of that name; a concept the missing axis could not have kept is held. Every scan says in `include_textbook` whether it ran under `--include-textbook`, which holds nothing back.
 6. **Combine** concepts (Pass 3): combinations of concepts that work together, scored for how well they do. This is where a scan finds how its parts are arranged. It runs by default when inference is not billed per token (Ollama, wherever it runs, or an OpenAI-compatible server on this machine); `--no-combinations` skips it, and `--combinations` runs it against a hosted endpoint too, which a default never does because those calls are paid. Each combination says whether its own text claims a feedback loop (`asserts_feedback_cycle`); that describes the text, not a check of the code. Pass 3 asks the model about the top candidates by graph score (how strongly two concepts share a folder, complementary categories, components, or one's output feeding another's input), with a share kept for combinations of three or more concepts and a penalty for concepts already chosen. Each combination carries its candidate's `graph_score` (0 to 1, the share of the most a pair can score) and `candidate_rank` (from 1), and every candidate it asked about and did not ship is a row `held <scan-id>` lists with its score and rank: one the model declined, one scored below the synergy floor, an answer missing its name, its synergy or enough of the candidate's concepts, a call that failed, and one folded into a near duplicate.
-7. **Find patterns** (Pass 5, `--patterns`): read the shipped concepts for product-level patterns, the ones that, taken together, say how the product is put together, each scored and named by the concepts it rests on. It is off by default; `patterns <scan-id> --workspace <path>` runs it over a stored scan without scanning again. Each concept it reads carries the centrality it judged, its `product_centrality` (`null` when no answer judged it), and a later `patterns` run's value replaces it in the stored scan, where `export` reads an exported concept whose value changed as one to export again. When the model answers its request for a list of combinations with one combination, that one is kept and the run says so in its closing lines and its notice, since the model may have found others it did not name.
+7. **Find patterns** (Pass 5, `--patterns`): read the shipped concepts for product-level patterns, the ones that, taken together, say how the product is put together, each scored and named by the concepts it rests on. It is off by default; `patterns <scan-id> --workspace <path>` runs it over a stored scan without scanning again. Each concept it reads carries the centrality it judged, its `product_centrality` (`null` when no answer judged it), and a later `patterns` run's value replaces it in the stored scan, where `export` reads an exported concept whose value changed as one to export again. The request for combinations states the list's shape, `{"combinations": [...]}`, and each combination is then scored in a call of its own, so its scores do not depend on the others the run found. When the model answers with one combination anyway, that one is kept and the run says so in its closing lines and its notice, since the model may have found others it did not name.
 8. **Enrich** with dependency-license risk and git authorship: `git blame` over the lines of the declarations a concept's own text names. The summary's **Authorship** line says how many concepts carry contributors and why the rest carry none (no declaration named, a file in another language, a folder git does not track, `git blame` failing at the scan's commit, ...), with a count for each.
 9. **Save** results under `~/.concept-scanner/data/scans/` whatever folder you run from, the run's summary (`summary.json`: what it found, shipped and held back, what it read, the models it called, where its code went, what it cost and how long it took), a `SUMMARY.md` that opens with that summary and lays each concept out like a specification (and is written again when a review decision or a figure changes its concepts), and a provenance audit log under `~/.concept-scanner/data/audit/`. Set `DATA_DIR` to keep them somewhere else; the container image and the GitHub Action keep them in the scanned repository's `data/` folder.
 
@@ -296,14 +297,19 @@ emitted text passes an output-layer check that keeps legal-statute vocabulary ou
 | Command | Purpose |
 |---------|---------|
 | `scan <path-or-url>` | Scan a directory or remote repo for concepts; with `--resume <run-id>` the path may be left out, and the stopped run's is used |
+| `scan documents:<path>` | Scan a folder of documents, or one document: Markdown, text, PDF and Word (see "Scanning documents") |
+| `sift <path>` | Say which files hold the program's own logic before a scan reads them, and which are wiring, presentation, plumbing or generated code, with the reason for each and the evidence it read. Its advice is the scan's own `--pin` and `--drop`, printed as the command to run, and it proves that advice selects exactly the files it says. It calls no model and writes nothing |
+| `sift ask <path>` | Ask your model what each file `sift` could not decide from facts alone is for, one request at a time, taking a role only when the model quotes the file's own words for it; it runs on the model you already run, offers `--dry-run`, and keeps its answers in a cache `cache clean` lists |
+| `upload add --name <file>` | Keep one document, given on stdin, in an upload a scan reads (`--to <upload>` adds to one); a document a scan would not read is refused, with why |
+| `upload read --name <file>` | Print the text a scan reads from one document given on stdin, or why it reads none |
 | `review` | List the stored scans as scan histories, by the id to review each with, with their passes, counts, and the file-set flags a read of more files repeats |
-| `review <scan-id>` | Step through discovered concepts and approve/reject; those awaiting a decision come first, then `--sort score` (the default, strongest first) or `--sort file` |
+| `review <scan-id>` | Step through discovered concepts and approve/reject; those awaiting a decision come first, then `--sort score` (the default, strongest first, a tie on the score listing the distinctive before the borderline before the textbook), `--sort file`, or `--sort group`, which lists together the concepts that are one finding two passes of a scan history read and those a pass's exact redundancy relations join (`redundancy.json`'s pairs, never its near-duplicate names), each group where its first member stands in the score order |
 | `figure draw <scan-id> [concept-id]` | Draw a concept's figure (or `--all`) with your primary model: a small graph of how its components connect, stored in `figures.json` beside the scan (see "Figures") |
 | `figure apply <scan-id> <concept-id>` | Correct a figure by hand: `--rename`, `--remove` and `--add` change the concept's components; `--edge c1>c4=label` draws an arrow between two of them |
 | `export <scan-id> <concept-id>` | Export an approved concept (or combination) from that scan as a JSON draft in the shape the importer reads; over a scan history, name a concept with its pass as `<pass-id>/<id>`, as `review --set` does |
 | `show <scan-id> <concept-id>` | Say where a concept lives: the file on this machine, its lines and the declarations they cover, the commit and branch of the pass that found it, whether the file has changed since, and a link to it at the scanned commit on GitHub, GitLab or Bitbucket; `--open` opens it at its lines in your editor, `--web` opens the link (see "Opening a concept's code") |
-| `locate <scan-id> --workspace <path>` | Look again for the file of each concept whose location is unconfirmed, on a completed scan (`scan` does this automatically; this re-runs it after model/prompt changes) |
-| `combine <scan-id>` | Find combinations of concepts that work together across subsystems (Pass 3) over a completed scan; given the first scan of a scan history, over every pass its review shows, so a combination can join concepts two passes found. A re-run keeps every stored combination and its decision and numbers new ones after them, and asks only about member sets no earlier run over the scan, its scan history or a scan it continues asked about (the stored combinations, and the candidates `held` lists, a candidate whose call failed excepted, whose row the re-run's outcome replaces), so a skipped candidate uses none of `--combination-max-candidates`; a run at a larger cap adds to the last and is not a superset of it. A run that finds none, or asks about only part of its candidates, says why from its own numbers and leads with the command that changes it. `--dry-run` counts and prices the calls it would make (one a candidate, less those asked before, and under `--workspace` the characterization first) and makes none |
+| `locate <scan-id> --workspace <path>` | Look again for the file of each concept whose location is unconfirmed, on a completed scan (`scan` does this automatically; this re-runs it after model/prompt changes). A concept it moves to another file is asked its distinctiveness axes there, unless the scan was run with `--no-axes` |
+| `combine <scan-id>` | Find combinations of concepts that work together across subsystems (Pass 3) over a completed scan; given the first scan of a scan history, over every pass its review shows, so a combination can join concepts two passes found. A re-run keeps every stored combination and its decision and numbers new ones after them, and asks about no candidate that is the same combination (by the rule that folds near-duplicate combinations) as one an earlier run over the scan, its scan history or a scan it continues asked about (the stored combinations, and the candidates `held` lists, a candidate whose call failed excepted, whose row the re-run's outcome replaces), so a skipped candidate uses none of `--combination-max-candidates`; a run at a larger cap adds to the last and is not a superset of it. A run that finds none, or asks about only part of its candidates, says why from its own numbers and leads with the command that changes it. Under `--workspace` it characterizes the concepts again first and asks the distinctiveness axes again of each one it characterized, unless the scan was run with `--no-axes`. `--dry-run` counts and prices the calls it would make (one a candidate, less those asked before, and under `--workspace` the characterization and the axes first) and makes none |
 | `patterns <scan-id> --workspace <path>` | Find product-level patterns (Pass 5) over a completed scan, or over every pass of a scan history given its first scan: which of its concepts, taken together, say how the product is put together. `--workspace` is the folder the scan read, where its README and architecture documents are; it reads them with the file set the scan recorded. `--dry-run` counts and prices its calls (the load-bearing calls as a range, its combination call and its scoring call) and makes none |
 | `models` | List the recommended model profiles, every model each one's scans call and what each does there, and which the server already has; the profile this machine's memory recommends is marked. Given the scan's model flags (`--primary-model`, `--draft-model`, `--secondary-model`, `--multi-model`, `--skip-review`, `--thorough`) it also says which models a scan given them would call, what it would download, and the `init` arguments that save that choice. With `--workspace <folder>` each profile also says how long a scan of the whole repository there takes with its models, beside its memory |
 | `models describe <model>` | Save what a model is for one endpoint: the window its server applies (`--window`, or `--measure` on a server on this machine), its largest answer (`--max-output`) and its think value (`--reasoning`); every later run on that endpoint uses it |
@@ -318,6 +324,9 @@ emitted text passes an output-layer check that keeps legal-statute vocabulary ou
 | `help --json` | Every command, argument and flag, with types, defaults, allowed values, what each argument names, and the rules between flags the commands enforce: the catalog a program can build forms or tool definitions from; a flag that sets a value a person can change carries a `setting` (its key, area, what it bounds, built-in value and range) |
 | `ui` | Open the window: this program in your browser (`--stop` quits it, `--serve` runs its server in this terminal and opens no browser) |
 | `init` | Choose the model, the provider and the advanced settings every command uses: the memory-aware picker, or `--profile <key>` (with `--secondary-model` for a grader of your own, and `--multi-model` for a two-model profile), or `--provider openai-compatible --base-url <url> --model <id>` with no questions; `--<key> N` saves an advanced setting and `--budget-<name> N` an output budget; `--reset <key>` or `--reset all` removes them (a key this version does not know is removed only by name); `--json` shows what is saved, every adjustable value included |
+| `accounts list` | Say where each source's client and token come from (a variable, `init`, or the keychain), never what either holds; a client id is shown by its last four characters at most |
+| `accounts sign-in <source>` | Sign in to a source with the client you registered there (`github`, your own GitHub App; `google_drive`), or give it a token you made there on stdin (`slack`, `discord`), keeping the token in your system's keychain; refused where there is none, or where it cannot keep a check value; says which token a scan will read (see "Scanning a private GitHub repository" and "Scanning a Google Drive folder, a Slack channel or a Discord channel") |
+| `accounts sign-out <source>` | Remove the token your system's keychain keeps for a source |
 | `version` | Print the version and default models |
 
 ## Useful flags (`scan`)
@@ -330,7 +339,7 @@ emitted text passes an output-layer check that keeps legal-statute vocabulary ou
 | `--no-interactive` | Skip the first-run picker; use saved config or defaults (for CI/scripts) |
 | `--skip-review` | Single-pass only: skip the Pass 2 validation model (faster), so the grader is neither called nor downloaded |
 | `--thorough` | Use the larger, higher-quality model |
-| `--include-textbook` | Also emit what the quality gates hold back by default: concepts characterization scored below the minimum distinctiveness score (`characterized-min-score`), whether or not they were classified `textbook` (see below) |
+| `--include-textbook` | Also emit what the quality gates hold back by default: concepts characterization scored below the minimum distinctiveness score (`characterized-min-score`), whether or not they were classified `textbook` (see below), and concepts the corroboration gate holds back (`not_corroborated`, step 5 of How it works) |
 | `--combinations` / `--no-combinations` | Pass 3, which finds combinations of concepts, runs by default when inference is not billed per token (Ollama, wherever it runs, or an OpenAI-compatible server on this machine); `--no-combinations` skips it, and `--combinations` runs it on a hosted endpoint too |
 | `--patterns` | Run Pass 5 after the scan, which reads the shipped concepts for product-level patterns. Off by default; a scan that does not run it names `patterns <scan-id>` in its summary and as a next step |
 | `--two-phase` | Experimental. Run generation as two calls (freeform distill, then structured extract) instead of one grammar-constrained call (see "Two-phase generation" below). Also settable via `CS_TWO_PHASE=1`. |
@@ -338,6 +347,8 @@ emitted text passes an output-layer check that keeps legal-statute vocabulary ou
 | `--timeout` | Per-request inference timeout (default 10m; under `--two-phase` at least 30m, a smaller value being raised, except for `--multi-model`'s own extraction, synthesis and merge calls, which take the value as given). A request that reaches it is sent at most twice in all, by the client, and no later stage sends it again; the error then says how many sends timed out. Raise for slow models or large batches. |
 | `--no-locate` | Do not look for the file of a concept whose cited file did not resolve (faster; such a concept's location stays unconfirmed rather than found or confirmed missing, and a concept only this step could locate is then not characterized) |
 | `--characterize-docs` | On a repository that is not docs-only, also characterize and gate its documentation concepts as code concepts are, so they ship as concepts (one characterization call each). Without it they are context for documentation matching only. A docs-only scan characterizes its documents anyway. The setup screens offer the same choice, saved for the repository |
+| `--excerpt` | How each shipped concept's `excerpt`, the text of the lines its location cites, is written: `verbatim` (default, the file's text unchanged), `scrubbed` (the banned legal vocabulary replaced, as in every field a model writes), `scrubbed-marked` (scrubbed, and each concept says whether its text changed) or `omit-on-hit` (no text where the lines hold a banned phrase, and the concept says why). The `e` key on the setup screens' last screen chooses it too |
+| `--no-axes` | Skip the distinctiveness axes call, which judges each shipped concept on what it does, why it is there and where it sits, one named level and a sentence each (one drafting-model call per shipped concept, and one per concept the minimum distinctiveness score held, which the axes may keep); the concepts then carry no `axis_distinctiveness`, no concept below the minimum is kept, and the corroboration gate holds none of them back: it keeps those that trip neither its commonness ceiling nor its distinctiveness and depth floors, and cannot judge the rest, which ship, counted in `corroboration_not_judged`. The `A` switch on the setup screens does the same |
 | `--resume <run-id>` | Carry on a scan that strict Pass 2 validation stopped, from that run's `unfinished.json`: discovery and every batch Pass 2 finished are re-used and the rest is run, as a new scan. The repository may be left out, and the stopped run's is used. What is compared is what the run used, never how its flags were spelled: the files collected, each by its content, whether Pass 3 runs, each model and its weights, every value that differs from its built-in one, and a remote endpoint's address. The resume is refused, with the reason, when any of those or this program's version changed since (timeouts, retries, how the run is shown and the spend ceilings may change). A scan started on the setup screens is resumed too: its record holds the flags that make the screens' choices, with the plan they chose saved under the scan's id in your home folder. The stopped run's error, `status` and the window's Resume card give the exact command |
 | `--tests` | How test files are used: `off` (default), `evidence` or `source` (see "Tests as evidence"). Also `CONCEPT_SCANNER_TESTS`. `--include-tests` is the older spelling of `--tests source`. |
 | `--no-auto-pull` | Refuse the run when the local Ollama server lacks a model the run calls, instead of downloading it, naming every missing model at once with the flag that chose it. Every command that calls a model takes it |
@@ -355,6 +366,79 @@ emitted text passes an output-layer check that keeps legal-statute vocabulary ou
 | `-v, --verbose` | Detailed progress output, and at the end why each concept held back was held back (the same text as `review --why`) |
 
 Run `concept-scanner scan --help` for the complete list.
+
+## Scanning documents
+
+Point a scan at a folder of documents, or at one document, with `documents:` in
+front of its path:
+
+```bash
+concept-scanner scan documents:$HOME/notes
+concept-scanner scan documents:./design/proposal.pdf
+```
+
+(A shell expands `~` only at the start of a word, so write `$HOME` or the whole
+path after `documents:`.)
+
+It reads Markdown (`.md`, `.markdown`) and text (`.txt`, `.text`) as they are,
+the text layer of a PDF, and the body of a Word document (`.docx`), and writes
+each as Markdown into a folder of its own under the data directory, where the
+scan reads it as it reads a repository's documentation. A concept found in
+`proposal.pdf` names `proposal.pdf.md`, the text it was read from. Folders a
+code repository's scan leaves out, such as `tests` or `examples`, are read here.
+
+A document that is not read is named with why, in the run's lines, the `--json`
+notice and `source.json` beside the scan:
+
+- a kind it does not read (a spreadsheet, a legacy `.doc`, an image);
+- a PDF with no text layer: a scanned page is an image, and no text is
+  recognised from an image, here or by any service;
+- a PDF whose text layer is not words (too few letters, the mark of a font
+  that does not map its glyphs to characters);
+- a hidden file or folder, or a link, which is never followed;
+- a file or folder this program may not open (the rest are still read);
+- a document whose text would take the name of another's: a Markdown file of
+  yours keeps its name, so `notes.pdf` beside `notes.pdf.md` is the one not
+  read (names that differ only in case, or in how an accent is encoded, are
+  one name);
+- a damaged file, or one over a bound.
+
+Text a tracked change deleted from a Word document is not read.
+
+`source.json` also says how each document was read, how many pages a PDF has
+and how many were read, and how much of its text was kept. Each PDF and Word
+document is read in a process of its own, so one that would never finish,
+exhaust memory or crash the reader is named as not read and the scan goes on;
+that process ends with the scan however the scan ends.
+
+Documents hold other people's words, so a scan of them is gated as a scan of a
+shared drive or a chat channel is. With a model server on this machine their
+text is read as it is and goes nowhere else. Sent to a server on another
+machine, it is blurred first (the names the documents' own metadata gives, such
+as a Word file's author and company or a PDF's author, and the classes
+`--redact` names), and the scan shows you the exact text it would send and
+sends it only once you accept it (`--accept-preview`).
+The bounds are settings `init --json` lists: `document-max-bytes` (25 MiB),
+`document-max-text` (500,000 bytes kept from one document),
+`document-max-pages` (2,000), `document-max-part-bytes` (64 MiB of a `.docx`'s
+body), `document-read-timeout` (60 seconds), `document-read-memory` (1,024 MiB)
+and `document-min-letter-share` (0.30).
+
+Documents you do not keep in a folder can be gathered into an upload, one at a
+time from stdin, which the window's **Upload** screen does for each file you
+choose:
+
+```bash
+concept-scanner upload add --name notes.pdf < notes.pdf
+concept-scanner upload add --name memo.docx --to upload-3f2a91c07b44 < memo.docx
+concept-scanner scan documents:<the folder the answer names>
+```
+
+`upload add` reads each document as a scan would and refuses one a scan would
+not read, saying why, including one whose text would take the name of a
+document the upload already holds; a document named as one already kept, in
+any case, replaces it. `upload read --name paper.pdf < paper.pdf` prints the text
+a scan reads from one document.
 
 ## Reading part of a repository first
 
@@ -403,7 +487,7 @@ Everywhere else (a coding agent, CI, `--json`, `--no-interactive`,
 | `--behaviour <text>` | A behaviour the project has, beside the purpose `--intent` states (repeatable, up to 8); the files implementing each are read first. Needs `--intent`. |
 | `--after <scan-id>` | Read more of the repository after an earlier scan: only files no scan in its history has read, in the same order. `--coverage` is then the total share, by default what the history has read and the suggested read of more files: as many more files of the repository's average size as the model profile reads at a time, or every file once no more are left. A file edited since it was read is listed, not read again. If a later read already continues the scan you name, this read starts a second branch beside it, reading again what that read read: the plan (and `--dry-run`) says so, with how many of its files the other branch read and the `--after` that continues that branch instead. If the earlier scan's coverage record sits in a data folder inside the repository, or inside any git checkout, and this machine has no record of writing it (the container image and the Action keep scans in the repository), it is not trusted: the scan reads every file instead, as a first scan that continues no scan history, and says so. |
 | `--dry-run` | Show every read this scan and each read of more files after it would make, with its files, tokens and time; save the plan; read nothing with the model. It also says how much to read first for the repository's size and your model profile (`suggested_coverage` under `--json`), and its next step plans that read. |
-| `--changed` | With `--after`, re-read the files of that scan history whose contents have changed since it read them. It re-runs the whole discovery call that held each one, not the file alone, because a file read on its own is a different question from the one that produced its concepts. A file git can see was RENAMED with its content unchanged keeps its concepts' answers and is followed to its new path, in this pass and every later one, with no call (`--rerun-pure-renames 1` re-runs the calls that held it instead), and a `--changed` pass with nothing else to re-read is refused, naming the move; a renamed file that was also edited is re-read like any changed file. One that is GONE retires its concepts. |
+| `--changed` | With `--after`, re-read the files of that scan history whose contents have changed since it read them. It re-runs the whole discovery call that held each one, not the file alone, because a file read on its own is a different question from the one that produced its concepts. A file git can see was RENAMED with its content unchanged keeps its concepts' answers and is followed to its new path, in this pass and every later one, with no call (`--rerun-pure-renames 1` re-runs the calls that held it instead), and a `--changed` pass with nothing else to re-read is refused, naming the move; a renamed file that was also edited is re-read like any changed file. One that is GONE retires its concepts. A concept the re-run finds again in a file that has NOT changed keeps the characterization an earlier pass gave it, with no call, when it is the same finding and the model, the model as served, the settings, the prompts and the part of the file sent are the same (`union.json`'s `characterized_by` names the earlier copy); otherwise it is characterized again, and the scan says how many of each. |
 | `--with-dependents` | With `--changed`, also re-read the files that depend on a changed one (direct only, at most 50). Their own contents have not changed, so their concepts are not treated as out of date. |
 
 Every path flag (`--pin`, `--drop`, `--exclude`, `--only`, `--keep-dir`) reads
@@ -486,6 +570,127 @@ concept a later pass retired is left out of both, which each says. Every
 member of a combination and every concept a pattern names is written
 `<scan-id>/<concept-id>`, naming the scan that found it, in the output, in the
 stored scan and in an exported draft.
+
+## What this release did not measure
+
+Four of the behaviours in this release rest on numbers that no labelled reading
+settles. Two of the four have now been read against labelled examples and
+neither reading settles its question: one came back near chance, the other
+depends on which labeller you ask. One is a capability this release does not
+have. One rests on floors that are starting values. They are named here so you
+can discount them, and each says what would settle it. A fifth paragraph says
+what the labels that do exist can and cannot stand in for, because it qualifies
+the other four.
+
+**The rescue's floors are starting values, frozen.** A concept whose
+characterization scored below the minimum distinctiveness score (0.50) still
+ships when two of its technical distinctiveness, `why` and `where` reach 0.40,
+or one reaches 0.50. Those three numbers were chosen before any labelled reading
+and have not moved since. A run that keeps a concept this way says so, on the
+terminal's `Coverage:` line and in the `--json` notice: the concept was kept "at
+floors not yet calibrated against labels". **A reading has since been taken, and
+it does not settle them.** Two labellers scored 128 labelled rows drawn from the
+rescue's own population, and whether today's rule keeps worth-reading concepts
+better than chance depends on which of the two you read: one says it does, by a
+margin whose interval sits above zero, and the other says it does not, by a
+margin that does not. Nothing in that establishes that the rescue keeps such
+concepts above chance, and nothing establishes that it does not. No floor was
+chosen on that evidence and no alternative was adopted. The held-out half of the
+reading was never judged at all, and the reason is a scan that failed and a
+stored ledger too old to replay rather than a measurement that came out weak.
+Read every count the rescue reports as the result of a rule and not of a
+settled measurement. The two floors are yours to change, by flag, by `init` or
+in the window.
+
+**`review`'s order rests on one reading, and that reading is near chance.** Given
+no `--sort`, `review` lists concepts by the score, technical distinctiveness
+times the source weight. That key has been measured against labelled examples,
+and the list says what it measured: the score's signal separated the mechanisms
+worth reading from the routine ones at **0.54 over 118 labelled rows**, where a
+signal carrying nothing about the two groups scores 0.50 and a perfect one
+scores 1.00. So the order did not move, and the reason changed: not that nobody
+has looked, but that somebody has. Read the top of the list as a starting point
+and not as a ranking.
+
+Three things that figure does not license. It is **one labeller's**: a second
+labeller scored the same rows and their figures are not a reading at all, 14
+positives where the floor is 25, which is why the note names the labeller with
+the number. It is **pooled across three codebases**, only one of which reaches
+20 rows of each label, so it says nothing about any one of them. And it is **a
+ranking statistic**: it says how often a concept worth reading outranks one that
+is not, which is exactly what the two labellers' agreement can carry, and it
+fixes no cut point anywhere. No floor in this release rests on it.
+
+The figure is shown only to a scan that ran the models it was measured on,
+because one codebase's reading printed on every scan would read as a property of
+that scan. The note is printed in the terminal, carried in `review --json`'s
+notice and shown in the window, and the order is not fixed by hand: it is read
+from committed measurements, and it moves to a measured signal as soon as one
+says it separates. Every concept shows its own score whichever order you choose,
+and `--sort file` and `--sort group` are the others.
+
+**A concept read from prose carries no lines, and so no excerpt text.** Lines are
+read from a Go file's own syntax, and by pattern for TypeScript, JavaScript and
+Python. A file in any other language, Markdown included, gets none, and its
+record says why. Every file a scan writes for a document, an upload, a chat
+channel or a drive folder is Markdown, and so is a code repository's own
+documentation, so a concept read from one of those carries no `location.lines`
+and its `excerpt.text` is null with `why_none` `no_lines`. Nothing is wrong with
+the concept: there is no span to cite and no text to quote, and the file it names
+is where to read the passage. Reading lines from prose is being built and is not
+in this release.
+
+**The corroboration gate's floors are not settled either.** The gate holds back a
+concept its distinctiveness axes do not corroborate, at a moderate floor of 0.40
+and a strong floor of 0.70. The condition for treating those two numbers as
+settled is a reading on at least two slices of concepts and with a second
+characterization model; the reading that was taken is inconclusive of that
+condition, so the floors stay as they are and are disclosed rather than
+defended. What IS measured, and is why the gate is on, is what it held on three
+recorded lists: nothing a scan ships, at a moderate floor of either 0.40 or
+0.60. Each value is yours to change.
+
+**About the labels that do exist.** Two models scored two sets of concepts drawn
+from real scans, 68 and 195, independently and blind, and their agreement is the
+figure to read any of it with: the two share an ordering and differ in level,
+one way only. The stricter of the two scored above the other on distinctiveness
+in 2 of those 263 items, and sat about 1.7 points below it on the smaller set's
+13-point total and about 2.2 on the larger. So a ranking by these axes carries
+between the two and an absolute cut point does not, and a floor is an absolute
+cut point. They are a model's judgements of a mechanism and not a
+practitioner's; the smaller set's items carried no code at all, only a name, a
+file and a summary, where all but three of the larger set's carry their lines
+and excerpt, and this tool's own axes call is shown the source. No comparison
+has been made between what a labeller scored and what that call scored. One
+caveat is measured and carries into every reading above: on about a fifth of the
+larger set's items the excerpt does not hold the mechanism the summary names, so
+a labelled reading over the excerpt measures that mismatch too, and these
+readings are owed a re-take once it is settled. None of the floors above rests
+on either set.
+
+## What this release has not been run against
+
+The section above is about numbers no reading settles. This one is about paths
+no run has taken. They are different gaps, and this one is the simpler of the
+two: the code is built and tested, and the test stands in for the service.
+
+**Scanning a connected source, and reading an uploaded document, have not been
+run against a real account.** A Drive folder, a Slack channel, a Discord server,
+and the commands that read a document you give the tool, are covered by tests
+that replace the service at the seam. No run in this release's record reached a
+real provider's API, a real operating-system keychain, or a model hosted off
+this machine by way of those paths: the live-scan reading for connected sources
+is registered and has not run, and neither has the re-run of the check that
+would have exercised a private repository over a real credential. What that does
+and does not mean: the refusals, the consent prompt, the local-only rule and the
+destination gate around those sources are the parts the tests do cover, and they
+are the parts most likely to be why you care. Whether a real account's API
+behaves the way the stand-in does is not something this release establishes, so
+treat those commands as untried rather than as verified, and tell us what you
+find.
+
+**The paths that have been run end to end are the repository ones**, local and
+cloned, which is where every measured number in this release comes from.
 
 ## Concept output and grounding state
 
@@ -887,7 +1092,9 @@ in US dollars, or `null` when a remote call that read or wrote something had
 neither a listed price nor a cost its endpoint reported (a call that read and
 wrote nothing costs 0). The cost includes Pass 5 whichever command ran it:
 `scan --patterns`, or `patterns`, which adds its run's Pass 5 spend to the
-stored scan's cost, and `synthesis_cost.cost` is Pass 5's own part.
+stored scan's cost, and `synthesis_cost.cost` is Pass 5's own part;
+`synthesized_at` says when that Pass 5 run attached its patterns (UTC, to the
+millisecond), and is absent when no Pass 5 run did.
 `dependency_map` names a file by its path in the repository, or a licence in
 the module cache by `module@version`, never by a folder on your machine.
 
@@ -943,6 +1150,137 @@ gives the status as the usual envelope. `--progress jsonl` streams one JSON
 event per line on stderr instead (run, stage, progress, model call, retry,
 warning, error and heartbeat events), leaving stdout to `--json`.
 
+## Scanning a private GitHub repository
+
+A repository you already have checked out is scanned as a folder, with no token
+and nothing fetched: give its path. For one on GitHub, give its address, and the
+scan clones it:
+
+```bash
+concept-scanner scan https://github.com/<owner>/<repo>
+```
+
+The token it clones with is the first of:
+
+1. `CONCEPT_SCANNER_GITHUB_TOKEN`, if you set it;
+2. the token of your own GitHub App, which `accounts sign-in github` keeps in this
+   machine's keychain (below);
+3. `GH_TOKEN` or `GITHUB_TOKEN`, which GitHub's CLI and Actions set, only when the
+   keychain keeps no token.
+
+With no token, a public repository is cloned as anyone may. If GitHub refuses the
+token, the scan clones again with no token, as git does, where your own git
+credential helpers answer (those in your global or the repository's configuration;
+git's system configuration is not read), so a stale `GITHUB_TOKEN` never stops a
+clone that works for you. No clone starts a program to ask for a password. Only that
+form of address is read this way (`https`, `github.com`, an owner and a repository,
+with or without `.git`); any other, such as `git@github.com:<owner>/<repo>.git`, is
+cloned with your own git credentials and ssh keys, as before.
+
+### Your own GitHub App
+
+This program has no client of its own. To sign in, register a GitHub App once: it
+asks for one permission, to read repository contents, and reads only the
+repositories of the accounts you install it on.
+
+1. On GitHub: Settings, Developer settings, GitHub Apps, New GitHub App
+   (<https://github.com/settings/apps/new>). Give it a name and a homepage (your
+   profile's address will do). Tick **Enable Device Flow**. Leave **Expire user
+   authorization tokens** ticked. Untick **Active** under Webhook. Under Repository
+   permissions, set **Contents** to **Read-only** and nothing else (Metadata is
+   read-only by itself). Choose **Only on this account**, or **Any account** to
+   install it on an organization, and create it.
+2. On the app's page, note its **Client ID** (not its App ID). It needs no client
+   secret; this program sends none.
+3. Under **Install App**, install it on your account and on each organization whose
+   private repositories you scan, choosing all repositories or the ones you name.
+4. Then:
+
+```bash
+concept-scanner init --client-source github --client-id <client-id>
+concept-scanner accounts sign-in github    # prints a page to open and a code to enter there
+concept-scanner accounts list              # where the client and the token come from, never either one
+concept-scanner accounts sign-out github   # removes the token this machine keeps
+```
+
+The token expires in eight hours and comes with a refresh token that lasts six
+months; a scan renews it a few minutes before it expires, and once more if GitHub
+refuses it. It is kept in the macOS Keychain, the Windows Credential Manager, or the
+Secret Service of a Linux desktop, and nowhere else: not in a file, a log, an error
+or a `--json` answer. A scan asks the keychain only after a sign-in has kept a token
+there (your settings file records that it did, and when, never the token), so a scan
+of a public repository never raises the keychain's unlock prompt, and a keychain that
+does not answer within `--keychain-wait` (a minute) is said, not waited on. Where
+there is no keychain (a container, the GitHub Action, a machine with no desktop
+session), `accounts sign-in` says so, and the token goes in one of the variables
+instead. Before it sends you to GitHub, a sign-in checks that the keychain keeps
+what it is given, so a grant is not made that would then be lost; it waits up to
+`--sign-in-wait` (fifteen minutes) for you to finish, and says which token a scan
+will read. The scan gives the token to git in git's environment, never on its
+command line, so another account on the machine cannot read it from the process
+list, and the clone keeps no copy. On macOS, any program running as you can read a
+token the keychain keeps without a prompt, as it can read `GH_TOKEN` from your
+shell: the keychain trusts the `security` program that created the item. Signing
+out removes this machine's copy; the grant itself stays with GitHub until you
+revoke it under Settings, Applications, Authorized GitHub Apps.
+
+## Scanning a Google Drive folder, a Slack channel or a Discord channel
+
+A scan reads these with your own account, through each provider's own API, into
+Markdown files on this machine, and then reads them as it reads a folder of
+documents:
+
+```bash
+concept-scanner scan gdrive://folder/<folder-id>          # or gdrive://file/<file-id>
+concept-scanner scan slack://<team-id>/<channel-id>
+concept-scanner scan discord://<server-id>/<channel-id>
+```
+
+| Source | Your account | What a scan reads |
+|---|---|---|
+| Google Drive | `accounts sign-in google_drive`, with a client of your own (PROVIDERS.md) | The folder's whole tree, a shared drive's included: each Google Doc (as Markdown, its images left out, or as plain text where that is too large), Sheet (every tab as CSV, through the Google Sheets API; its first tab alone where that API is not enabled, which the scan says), Slides deck, PDF, Word file and text or Markdown file, one file per document named by its Drive id; an image, a shortcut, a document over the size limit, and one Drive refuses for itself are each named as not read, and the fetch goes on |
+| Slack | a token of a Slack app you install to your workspace, given to `accounts sign-in slack` on stdin (PROVIDERS.md gives the app's manifest) | The channel's messages, newest first, each thread's replies after the message that started it, one file per day they were posted; a person Slack will not name is written under their id, and a direct message is refused |
+| Discord | a token of a bot you invite to your server, given to `accounts sign-in discord` on stdin | The channel's or thread's messages, newest first, one file per day; a thread started from one of its messages is counted, not read (scan it by its own id); the bot needs its Message Content Intent on, or its messages come back empty, which the scan says when half of them do (`--discord-intent-empty-share`) |
+
+What a fetch reads is bounded, and each bound is yours to change: at most 500
+documents of a Drive folder (`--drive-max-documents`), 10,000 entries listed
+(`--drive-max-listed`) and 10 MiB of one document's text (`--drive-max-document-bytes`);
+at most 2,000 messages of a channel (`--channel-max-messages`), every message
+counting, with text or without, within 90 days of its newest message
+(`--channel-window-days`); and in all no more than a fetched source may hold
+(`max-repo-size`, 1 GiB), what lies past it named as not read. A provider that
+asks the scan to wait is waited out as it says, up to two minutes at a time. What
+each fetch read and left (documents not read and why, a channel's limit reached,
+messages with no text, threads, a listing Google says was incomplete) is
+recorded in `source.json` beside the scan and said in a note its `--json` notice
+carries.
+
+**These sources hold other people's words**, as a folder of documents does
+(see "Scanning documents"), so where their text goes is said on every run, and
+decided by every model the run calls. With the model server on this machine, the
+scan asks it where it runs each model: a model it runs itself reads the
+text as it is, and one it sends to another machine (an Ollama cloud model) counts as
+that machine. A server on this machine that sends its requests elsewhere without
+saying so (a proxy at a loopback address) cannot be detected, and the scan says so.
+Sent off this machine, the text is blurred first, class by class (names, the
+organisation, dates and times, the shape of the group, and ids, links and versions;
+`--redact` chooses the classes), and sent only once you have read exactly what will
+be sent and said yes. The whole text is written to
+`~/.concept-scanner/previews/<digest>.txt`, which only your account can read; the
+terminal shows what each class blurred and its first lines; and you accept it at
+the terminal, or by typing the scan again with `--accept-preview <digest>`, a line
+the scan says for you and never runs itself. The digest names the server, every
+model and the text, so another model is asked about again. `combine`, `locate`,
+`patterns` and `figure draw` send such a scan's text off this machine only where
+its preview was accepted. The blurring is a courtesy for readers who already know
+the people, not a guarantee: the preview is there so you judge what is sent.
+
+The token is read from `CONCEPT_SCANNER_GOOGLE_DRIVE_TOKEN`,
+`CONCEPT_SCANNER_SLACK_TOKEN` or `CONCEPT_SCANNER_DISCORD_TOKEN`, or else from this
+machine's keychain, where `accounts sign-in` keeps one. It is sent only to the
+provider it is for, in a request header, and never written to a file, a log, an
+error or a `--json` answer.
+
 ## Settings, keys and where they live
 
 Everything you choose is kept for your user in `~/.concept-scanner` (on Windows,
@@ -951,8 +1289,8 @@ a terminal, or an agent does:
 
 | In `~/.concept-scanner` | Holds |
 |---|---|
-| `settings.json` | The model profile, the provider with its endpoint and model, `think` settings, output budgets, saved advanced settings, the editor `show --open` uses, and your yes or no to the update check |
-| `credentials.json` | API keys saved with `init --with-key`, readable only by you, each saved for one endpoint |
+| `settings.json` | The model profile, the provider with its endpoint and model, `think` settings, output budgets, saved advanced settings, the editor `show --open` uses, your yes or no to the update check, and which sources a sign-in kept a token for in the keychain, and when (never the token) |
+| `credentials.json` | API keys saved with `init --with-key`, readable only by you, each saved for one endpoint; and the client you registered with a source you sign in to, saved with `init --client-source <source> --client-id <id>`, and its secret where the provider has one with `init --client-source google_drive --with-client-secret` (on stdin) (a sign-in's token is kept in your system's keychain, never here) |
 | `data/` | Scans, the audit log, and each run's status and log (`DATA_DIR` moves them) |
 | `repos/` | Each repository's purpose, pins, drops and last scan, which the setup screens and `scan --dry-run` show |
 | `ui.json`, `ui.log` | While the window runs: its address and the secret it gives your browser, and its log |
@@ -994,7 +1332,7 @@ spent on.
 Your code goes to the model you chose and nowhere else. This binary sends
 nothing about you or your scans to us.
 
-It opens exactly four kinds of connection, and the full list is in
+It opens exactly six kinds of connection, and the full list is in
 `outbound_calls_test.go`, which fails the build if a new one is added without
 being described here:
 
@@ -1014,7 +1352,27 @@ being described here:
   window listens on 127.0.0.1 only, so no other machine can reach it, refuses
   requests from any other site, and needs a secret it hands your browser once;
   `ui` talks to it for checking whether the window is already open and for
-  asking it to quit.
+  asking it to quit;
+- **a provider you sign in to**, only when you run `accounts sign-in`, or when
+  a scan uses a token the keychain keeps that is about to expire or that the
+  provider refused: GitHub's or
+  Google's sign-in page and token address, for signing in with the client you
+  registered there and renewing a token it gave. A sign-in that sends your
+  browser to the provider and back is answered on this machine, listening on
+  127.0.0.1 for the provider to send your browser back, for as long as the
+  sign-in takes, at most `--sign-in-wait`;
+- **a source you name**, only when a scan's target is one: the Google Drive
+  API (and the Google Sheets API, for a Sheet's tabs), Slack's Web API or
+  Discord's API, with the token you gave, for reading the Google Drive folder,
+  Slack channel or Discord channel you name. What it
+  reads is written on this machine, and goes to a model server elsewhere only
+  as "Scanning a Google Drive folder, a Slack channel or a Discord channel"
+  says: blurred, and once you have read it.
+
+A scan of a repository's address runs `git`, which clones it from there: a
+`https://github.com/<owner>/<repo>` address with your GitHub token when you
+give one (see "Scanning a private GitHub repository"), any other address with
+your own git credentials.
 
 On a machine with the `go` command, a scan of a Go repository also runs it there,
 for license analysis and semantic batching, and it may download the repository's

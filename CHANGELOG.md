@@ -4,6 +4,902 @@ All notable changes to concept-scanner are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and releases are the
 `v*` tags in this repository.
 
+## [4.1.0] - 2026-11-04
+
+**A distinctiveness claim now cites a line you can open, and a scan says when a description reproduces a run
+of its file's own words.** The `evidence` on a distinctiveness entry holds the cited line's own text as this
+program read it out of the file, with the line number and the verdict of the program's own check beside it,
+so a reader can go and look instead of taking a sentence about the code on trust. A file this tool reads can
+address the model reading it, and a new section of `grounding.json` reports the longest verbatim run in each
+shipped concept and whether it came from outside the lines that concept cites. `review` says what its order
+rests on and no longer names internal files or repositories while doing so. Scanning a connected source
+(Drive, Slack, Discord) and the commands that read a document you give the tool ship here and **have not
+been run against a real account**, which the README states in full. Concept schema 2.8.0 and scan envelope
+3.6.0, both declared by the ingesting side before this release was cut.
+
+### Disclosed
+
+- **What this release did not measure.** Four behaviours rest on numbers no labelled reading settles:
+  the rescue's floors below the minimum distinctiveness score, the order `review` lists concepts in,
+  the absence of lines and excerpt text on a concept read from prose, and the corroboration gate's
+  floors. Two of the four have now been read against labelled examples and neither reading settles
+  its question; one is a capability this release does not have. Each is named in the README's
+  [What this release did not measure](README.md#what-this-release-did-not-measure) section, with what
+  would settle it and what the labels that exist can and cannot stand in for. Read it before you
+  trust a count, an order or a hold.
+
+- **What this release has not been run against.** Scanning a Drive folder, a Slack channel or a Discord
+  server, and the commands that read a document you give the tool, are built and covered by tests that
+  replace the service at the seam, and no run in this release's record reached a real provider's API, a real
+  operating-system keychain, or a model hosted off this machine by way of those paths. The live-scan reading
+  for connected sources is registered and has not run, and neither has the re-run of the check that would
+  have exercised a private repository over a real credential. The refusals, the consent prompt, the
+  local-only rule and the destination gate around those sources are the parts the tests do cover; whether a
+  real account's API behaves the way the stand-in does is not something this release establishes. The
+  README's [What this release has not been run against](README.md#what-this-release-has-not-been-run-against)
+  section says it in full. Treat those commands as untried rather than as verified; the paths run end to end
+  are the repository ones, local and cloned.
+
+### Fixed
+
+- **The scan envelope's `timestamp` changed meaning without a version, and a lineage's `last_at` went short.**
+  `timestamp` became the run's own start on 2026-11-01, so `timestamp` plus `duration_ms` is when the run ended,
+  where the pair had overshot by 39m 49s on a measured scan. That change was cleared by a grep for the PAIR while
+  the change was to one member of it, so three readers of `timestamp` alone went unaccounted: the store's scan
+  listing and a lineage's children are both ORDERED by it, and a lineage's `last_at` was derived from it and so
+  became the latest pass's START, short by that pass's whole wall time. The two orderings are kept, now by when a
+  scan began rather than by when its result struct was built, and stated where each sort is made; `last_at` is the
+  max of the passes' ends, which is only computable because the pair now shares an origin. `ScanResultSchemaVersion`
+  is 3.6.0, and its comment gained a fourth bump rule: a field whose MEANING changes under an unchanged shape is
+  minor and must still be stamped, because that is the one case a consumer cannot fail loudly on. **A consumer
+  that orders or differences scan times should read the envelope version before doing so.** The ingesting side
+  declared 3.6.0 before this release was cut, which is what the release was waiting on: the version is stamped so
+  that a reader who cannot fail loudly can at least ask, and the side that ingests these envelopes has recorded
+  that it reads neither field.
+
+### Added
+
+- **A distinctiveness claim now names a line you can open, and says whether the program found that line's
+  text where the claim said it was.** Every entry in `distinctiveness_mechanism[]` carried an `evidence`
+  field holding a sentence the model had written about the code, which a reader could not check without
+  rereading the file themselves. The model is now asked for the longest single line that shows the move;
+  the program locates that quote in the file it scanned, computes the line number from the match, and
+  carries the verdict of its own check. So `evidence` holds the cited line's own text as this program read
+  it out of the file, and `line`, `evidence_verdict`, `evidence_level` and `evidence_why_none` sit beside
+  it (concept schema 2.8.0). Absent, `not_checked` and a real verdict are three different readings, and a
+  reader presents the field by its verdict rather than by whether text is present. `evidence_verdict` is
+  one of five values and a consumer owes each of them a rendering: `found`, `too_short`, `absent`,
+  `not_checked`, and `outside_regions`, which says the file holds the quote somewhere other than the lines
+  the concept cites. The measurement below produced the first three and never `outside_regions`, so that
+  value reaches a consumer unexercised.
+
+  Measured on three arms over one corpus, one run each. With the ask, 36 of 43 entries cite text that is
+  byte-exact in the file (0.837), against a bar of 0.786 registered before the code was written; the same
+  prompt before the ask scores 0.125, and a null edit of the ask's own length scores 0.038. This program's
+  own half of it, every citation that shipped with text naming a line that really holds that text, is 34 of
+  34. At a 16-rune minimum, 4.7% of entries were refused as too short.
+
+  **What these three figures do not establish.** One run per arm is not a tested difference, so they are
+  what the registered bars were read against and not an estimate of how far they move. **The arms are also
+  not paired, and a coincidence makes them look as though they are:** each produced 21 concepts with the
+  same per-file distribution, which says the stages before this one did not vary, but only 8 of the
+  concepts' own line spans are shared by all three, because a concept's text comes from a sampled model and
+  the same count is not the same concepts. So this compares arms over one corpus, never the same concept
+  twice. And no entry in any arm cited a line outside the span its concept describes, so the bar on
+  byte-exactness and the bar on staying in span were read off the same 36 entries, with the second never
+  separately exercised.
+
+  **`evidence` keeps its key and its type wherever it holds text, and its CONTENT changed, which is the one
+  kind of change a consumer cannot fail loudly on:** a renderer printing it as prose now prints a line of
+  source as prose, with no monospace and no link to the line. **No release carries 2.8.0 until the consumer
+  has declared it.**
+
+- **`models` says in one line what each of the eleven models it knows actually is.** The registry held a
+  description for six of them and displayed none; what a reader actually saw was a different field on the
+  five cloud shortlist entries, so five models were described nowhere, and anyone choosing between a 7 GB
+  model and a 30 GB one had only the profile's name to go on. All eleven now carry a one-line description,
+  and `models` shows it in both of its sections: a new list of what each local model is, and the cloud
+  shortlist's own detail line. `--json` carries both, so a program asking which model to scan with is told
+  what a person is told. The second, undisplayed copy is gone, and it had already drifted: the caveat that
+  two of these models are unreliable as an in-pipeline grader on a remote endpoint existed only in the copy
+  nobody could see. Where one model is served by two providers under different names, each provider's line
+  may differ, because one sentence cannot describe both.
+
+  **Every line is about cost, speed, memory or whether a concept cites code that exists, and none ranks
+  models by quality**, because quality is not measured here: this tool's own model bench reports that
+  question as unanswered, and its per-tier arms read "not screened" at a sample below their screen's floor.
+  The two models with no measurement behind them say so instead of getting prose, which is the useful thing
+  to tell someone who is choosing.
+
+- **A scan now says when a concept's description reproduces a run of its file's own words, and whether that run
+  comes from outside the lines the concept cites.** A file this tool reads can address the model reading it: of
+  six instructions planted in test corpora, two reached a shipped concept and both reached it word for word, one
+  as the concept's summary and one in `key_insight`. Both passed every check the scan already ran, because the
+  grounding check asks whether a description's named symbols appear in the file and not whether it is right about
+  them. The new section of `grounding.json` (schema 1.4.0) reports the longest verbatim run per shipped concept,
+  the field holding it, the line it came from, and whether that line belongs to the declaration the concept
+  describes. Measured on both arms: the two planted runs are 13 and 11 words, and over 31 honest concepts of a
+  real package no run from outside a concept's own span exceeds 7, so the floor (`copiedProseMinWords`, 8, a
+  registered setting) separates them. Counting runs wherever they fall does NOT separate them, which is why the
+  check attributes a run to the declaration it documents rather than relying on its length. Nothing is dropped,
+  renamed or refused on this signal, and a count here is what the comparison matched, never a count of injected
+  text.
+
+- **The extraction prompt names the methodology it implements, and a check notices when that methodology moves.**
+  The prompt is a distillation methodology that also lives as prose in guides beside this repository, and nothing
+  here pointed at them: when the prose was revised in late October 2026 and the prompt was not, three separate
+  defects followed from that one drift. The reconciled revision of each guide is now recorded with what the
+  prompt owes it, and a check compares the recorded revision against the guide wherever the guides are present.
+  Where they are not, which is any checkout of this repository on its own, the check says so and verifies
+  nothing, rather than passing.
+
+- **Pass 5's run summary says how many mechanisms its load-bearing stage judged, and how many no answer judged.**
+  The stage puts every mechanism to the model for product centrality, and one that no answer covers takes no
+  further part in the pass: it reaches no combination and its `product_centrality` stays null, which is not a
+  centrality of zero. That fact existed only as a log line, so a reader holding the scan could not see it. The run
+  summary's counts now carry `load_bearing` (`summary.json` schema 1.10.0) with the denominator, the judged count,
+  the unjudged count and the limit beside them. A scan that ran no Pass 5 has no record there rather than a record
+  of zeros.
+
+- **A multi-model scan now says whether each shipped concept's excerpt holds a quote the extraction gave for that
+  file.** The extraction prompt asks the model for the exact quote from the source, and that answer was parsed and
+  read by nothing, while every shipped concept's excerpt is computed separately from the declarations its own text
+  names. Two blind labellers reading 195 concepts across three real scans found the computed span does not hold the
+  mechanism the summary describes on about a third of them, and both put it first among what made a label
+  unreliable. `grounding.json` (schema 1.3.0) now carries a `quotes` section: over the concepts the scan ships, how
+  many excerpts hold a quote the extraction gave for their file, how many hold none, and how many could not be
+  compared at all with the reason on its own line, every count against the denominator. Whitespace is collapsed on
+  both sides before comparing, because a model rewraps a passage it copies, and a quote of fewer than a dozen
+  characters is reported as not covered rather than matched.
+
+  **Nothing is dropped, renamed or replaced on this signal.** The excerpt a concept ships is the computed one
+  either way; the number is what would justify changing that, and it did not exist before. A scan on the
+  single-model path produces no quotes at all and so has no section, rather than a section of zeros that would read
+  as a check that found nothing wrong.
+
+- **`sift <path>` says which files hold a program's own logic, before a scan reads them.** Give it a folder on this
+  machine and it walks the folder as a scan does, with the same file-set flags (`--only`, `--exclude`, `--keep-dir`,
+  the documents and tests flags and the rest), gathers facts about every code file a scan would read (its header, its
+  declarations and imports, whether it carries a generated marker or is built for some operating systems only, how far
+  its declarations branch, which files import it), and gives a file a role only where a model-free rule decides it:
+  `generated`, where the file says so or is a minified `.js` or `.css` file; `presentation`, a script a `//go:embed`
+  directive names beside a page; `plumbing`, a small Go file the go command builds for some operating systems only;
+  and `wiring`, a Go file whose top-level declarations are command definitions or whose functions are HTTP handlers.
+  A file no rule decides is kept, since leaving out a file that holds a mechanism costs more than reading one that
+  holds plumbing; a file a rule would read as plumbing or wiring is kept too when a declaration in it branches more
+  than `sift-max-branching-for-a-rule` times; and so is any file the document `--cited-by` names cites. `--pin`
+  keeps a file whatever a rule says and `--drop` leaves one out whatever else does, read as a scan reads them. It
+  calls no model and writes nothing into the folder it reads, and it is the 23rd command this program ships.
+
+  The answer is a table by folder (every file with `--list-files`), then the scan that reads exactly the kept files,
+  written as `--drop` entries added to the flags you gave, and each model profile's time for that scan beside one of
+  every file, priced as `models --workspace` prices a read. Every run proves its own advice: the files the advised
+  scan would collect must be the files sift kept. Its steps run that scan, the same scan at the read cap where the
+  advice raises it to let a large kept file in, a dry run of it, a read of more files of a stored scan history of this
+  repository where one was collected the same way, with the advice added, and a `--drop` of your own. `--json`
+  answers with all of it (schema 3.1.0). Documents, test files and the folders a scan skips are listed as the scan's
+  own summary words them, and never judged: the kept and left-out tallies count the code files sift judges, and the
+  first summary line says separately what a scan also reads beside them, so neither population hides the other. sift reads a folder on this machine only: a repository at an address is
+  yours to clone first, since sift does not clone one, and a documents target or a channel holds no code. It does
+  run the go command to resolve a Go folder's imports, so on a machine whose Go caches are cold that can fetch
+  modules through your own `GOPROXY`; with them warm it fetches nothing, and a run with the proxy unreachable
+  answers the same. Six values are
+  yours to change, by flag, by `init` or in the window: `sift-header-chars`, `sift-minified-line-chars`,
+  `sift-variant-max-funcs`, `sift-max-branching-for-a-rule`, `sift-command-share` and `sift-handler-share`. A role
+  says where a scan's calls are best spent and nothing about the code's worth.
+
+  **`test support`** is given to a Go file in a package under an `internal` path that test files import and no
+  other code does. It is counted from the Go files' own parses, test files included, rather than from the
+  dependency graph, which reads no Go test file and so would see no import from one at all; an import path is
+  resolved the way the go command resolves it, under the module path `go.mod` declares, else by the longest folder
+  the path ends with. A file no rule decides is still kept as undecided.
+
+- **`sift`'s answer says what its proof checked, and the proof covers the scan that raises the read cap.** Every
+  run proves that the files the advised scan collects are the files sift kept, and a kept file larger than the read
+  cap was left out of both sides of that comparison, so the one step whose purpose is to raise the cap and read
+  such a file was the step the proof said nothing about. The proof now runs at each cap the steps offer, the
+  advised scan's first, and `--json`'s `advice.proof` carries what it checked (`files`, and `read_caps`) where it
+  carried a constant `true`; a kept file above the most the flag takes is said apart, since no step reads it. Each
+  profile's time is priced at ONE cap, the advised scan's, for both the kept files and every file, so the two
+  figures differ by the drops alone and not by the cap as well. Answer schema 3.1.0, which the entry above now
+  states too: it said 3.0.0 until 2026-10-30, so one block gave two versions for one answer and the feature's own
+  entry gave the wrong one.
+- **`sift ask` asks your model what each file `sift` could not decide is for.** The rules decide what they can
+  from facts alone; `ask` sends the rest, one request at a time, and takes a role only when the model quotes the
+  file's own words for it. It runs on the model you already run (the provider flags, `--primary-model`,
+  `--thorough`), offers `--dry-run` and `--progress`, keeps its answers in a cache of its own that `cache clean`
+  lists, and reads no stored answer in the plain `sift` query, so that query stays the same every time you run it
+  and needs no server. Four values are yours to change, as the others are.
+
+  **A model's role never leaves a file out by itself.** The file is kept and the role is offered as a `--drop` for
+  you or an agent to confirm, with the line that confirms it and the form values the window writes. The tallies
+  count such a file under kept, as "suggested plumbing", which a rule's bare role no longer shares, and the file's
+  own row reads "kept, suggested plumbing by the model", so a reader can tell a model's role from a rule's. The
+  reason the role is a suggestion is measured: a null edit
+  of that prompt, a blank line in one arm and one sentence reworded with its meaning kept in the other, moved 4 of
+  the 34 roles the model judged in the first arm and 6 in the second, four of the ten crossing the keep line,
+  while the unedited arm run a second time was byte-identical. So the movement is mostly the edits' and what a scan
+  reads would otherwise turn on a reworded sentence. It is "mostly": a repeat that matches says run-to-run variation
+  was too small to see on this control, not that none exists.
+
+- **The window's Scan screen says which files that scan will read, and the setup screens show each file's role.**
+  (The card's "Leave out the files the model suggests" button could not be reached until 2026-10-30: it is offered
+  from the plain query's answer, which carries no model role by design, and asking the model then re-ran that
+  query and discarded what the calls had just paid for. The card now keeps the ask's own answer.)
+  "Files this scan reads" runs `sift` with the scan form's folder, its file-set flags and its pins and drops, and
+  again whenever one of them changes: the summary, a folder table, and each folder opening to its files with the
+  role, how it was decided, the size, the header's first line and the reason. Keep and Leave out on a row write
+  that row's values into the form's own pin and drop fields and ask again, and "Use this choice" writes the whole
+  advice the same way, so what the card offers is only ever the scan you are about to run. On the terminal's
+  second setup screen each file row carries the role the rules gave it and why, and an advised drop opens marked,
+  to accept or undo with the toggle that row already had.
+
+- **Pass 5 asks once more when a scoring answer leaves a score out.** An item already asked about on its own,
+  whose answer did not cover it whole, has its own request sent again (`--pass5-same-request-reasks`, 1, from 0 to
+  5). Every answer is a floor, so a re-ask only fills what was missing and can never overwrite a score already
+  given; a call that failed is not re-asked, since the provider already retries that. A run that re-asked says so,
+  with how often it fired and how often it finished the job, because a recovery that works otherwise absorbs the
+  evidence that would tune what it is recovering from. This retry had been removed on the
+  belief that one request, sent again at a pinned temperature, is answered the same way. A pinned re-send on this
+  stage was measured answering differently, so the belief was false and the retry is back.
+
+- **A Pass 2 batch your grader cannot classify no longer fails the whole scan.** Until now one flaky batch ended
+  the run, which cost a four-and-a-half-hour scan once and two more since. The run now continues and says what it
+  had to fall back on: each concept carries who gave it the classification the minimum reads, the grader or the
+  discovering model, and the run's summary counts them (`summary.json` 1.8.0's `counts.classified_by`), with a
+  sentence in the caveat and in `--json`'s notice. A run that wants the old behaviour, so that nothing is carried
+  on a model grading its own output, still has it: the strict path is what every measurement here uses.
+  **The per-concept field is Concept 2.6.0 and is not in a release yet**, because a consumer declares a new field
+  before a release carries it.
+
+- **The run summary counts every axis a concept is scored on, how many of each axis's scores are not one of its named
+  levels', and how every pair of them ranks together** (`summary.json`'s `counts.score_spread`, run summary 1.7.0).
+  The spread counted the nine characterization scores; its axes are now those nine plus the three distinctiveness
+  axes (`what`, `why` and `where`) and Pass 5's `product_centrality`, thirteen in all. Each axis asked as named
+  levels carries `off_level`, how many of its scores are not a level's value (`null` on `product_centrality`, which
+  has no such scale), so every witness the corroboration gate reads now has one: a floor set inside a gap between two
+  levels decides as any other floor in that gap only while that count is zero. `witness_correlations` gives the
+  Spearman correlation of each pair of the gate's witnesses and `axis_correlations` of every pair of the spread's
+  axes, each over the concepts scored on both of the pair, `null` under three such concepts or where an axis takes one
+  value over them. Two witnesses that rank together agree more easily, so the gate holds back less than its two of
+  three suggests, and until the axes are shown independent the scan says how far they are not. The spread's line still
+  names the gate's witnesses' pairs alone, and `distinct_score_sets` counts over the added axes too, so it is not
+  comparable with an earlier version's. Nothing reads any of it for a decision.
+- **The concept view shows the three distinctiveness axes, each with its level's name.** "What it does", "Why it is
+  there" and "Where it sits" join the engineering signals after the core axes, each as its value and what that value
+  means on the axis's scale, as `0.60 (unusual on the scale)`, the way the core axes already read, and read where the
+  gates read them. They show in the terminal's review, `review --json`'s `concept_sections`, the window's concept
+  card and `SUMMARY.md`. An axis nobody scored reads "not scored", and a value that is no level's shows the value
+  alone. (This bullet said they also show in the scan's result block, and they do not: that block prints the brief
+  sections of a concept, its technical field, its summary and where it lives, and no signal. Corrected 2026-10-28,
+  checked against `writeSpecBrief` rather than against this sentence.)
+- **The concept view shows Pass 5's product centrality, with the step that wrote it.** It joins the engineering
+  signals last, in the same four places, and never as a bare number, because characterization does not write this
+  axis: Pass 5's load-bearing step does, and only a run that ran Pass 5 has one. A judged concept reads
+  `0.80, Pass 5's judgment of how much of the product's value would go with this mechanism`; one no Pass 5 answer
+  has judged reads "not scored" with the step named and the two ways to ask for a judgment, a `patterns` run over
+  the scan or a scan given `--patterns`. The number itself is unchanged, and has been on the wire since Pass 5
+  began writing it; what is new is that a person reading a concept can see it and see where it came from, which is
+  the precondition of any later order by it. A run that made no Pass 5 call and a Pass 5 whose answers judged every
+  other mechanism leave the field empty alike, and nothing a concept carries tells them apart, so the view does not
+  say which happened.
+
+- **`held --json` gives a held concept's scores, lines and excerpt, and the witnesses that decided it** (held-back
+  record 2.3.0). A concept a quality gate held back keeps in its row:
+  - its engineering axes, its distinctiveness axes, its classification and discovery's estimate, each `null` where it
+    was never produced;
+  - the lines of the file it cites and their excerpt, in the scan's `--excerpt` mode, and `lines_from`, how that span
+    was chosen, which a shipped concept has carried since output schema 2.1.0 and a held one did not carry at all;
+  - on a rescue or corroboration row, each witness's value, the floors it was counted against and the path that
+    decided it.
+
+  `held` prints each row's lines and excerpt. A ledger written before this version is read with them empty.
+
+- **A scan reads a Google Drive folder, a Slack channel or a Discord channel with your own account.** Give
+  `gdrive://folder/<folder-id>` (or `gdrive://file/<file-id>`), `slack://<team-id>/<channel-id>` or
+  `discord://<server-id>/<channel-id>`, and the scan reads it through the provider's own API into Markdown files on this
+  machine, then reads them as a folder of documents: a Drive folder's whole tree, a shared drive's included (listed in
+  that drive's own corpus, and a listing Google says was incomplete is said), each Google Doc as Markdown with its
+  images left out (the size limit applied once they are out, with Google's plain text export where the Markdown is
+  still too large), each Sheet's every tab as CSV through the Google Sheets API (enable it beside the Drive API; where
+  it refuses, the first tab alone, which the record says), each PDF and Word file read by the same bounded reader a
+  scan of documents uses, and each deck and text file as text, one file per document named by its Drive id; a
+  channel's messages, newest first, with each Slack thread's replies after the message that started it, one file per
+  day they were posted, named by that day. What a fetch does not read (an image, a shortcut, a document over the size
+  limit, one Drive refuses for itself, a channel's messages past its limit, messages with no text, a thread or a
+  person Slack will not give, a Discord thread, which is a channel of its own) is named, with why, in `source.json`
+  beside the scan and in a note its `--json` notice carries; one item a provider refuses is named and the fetch goes
+  on, while a refused token, a missing folder or channel, or a quota stops it, each with steps of its own. What a
+  fetch reads is bounded by values you may change: `--drive-max-documents` (500), `--drive-max-listed` (10,000
+  entries), `--drive-max-document-bytes` (10 MiB), `--channel-max-messages` (2,000, every message counting, with text
+  or without) and `--channel-window-days` (90 days back from the channel's newest message, never from today, so a
+  channel reads the same until someone posts), and in all by `max-repo-size`, the most a fetched source may hold, past
+  which documents and days are named as not read. A provider that asks the scan to wait is waited out as it says, up
+  to two minutes at a time. Each holds other people's words, so each is gated by `--redact` and `--accept-preview`
+  (below), every channel's, thread's, document's and tab's name a fetch writes into a file is one the gate blurs, and
+  every concept says where it came from (`provenance.source_kind` `google_drive`, `slack` or `discord`). A direct
+  message is refused; a Slack target may name an Enterprise organisation's `E` id when the token's workspace is in
+  it; and a Discord bot needs its Message Content Intent on, which the scan says when at least half the messages it
+  reads come back empty (`--discord-intent-empty-share`). Tested against stand-ins of each provider's API; not yet run
+  against the real ones.
+- **`accounts sign-in google_drive`, `slack` and `discord`.** Google Drive's sign-in sends your browser to Google
+  with a client of your own (a Desktop app client; `init --client-source google_drive --client-id <id>`, and its secret
+  on stdin with `init --client-source google_drive --with-client-secret`) and back to this program on 127.0.0.1, and
+  asks only for read access to Drive; it waits up to `--sign-in-wait` (fifteen minutes) for you, then stops and closes
+  what it listened on. Slack and Discord are read with a token you make there (a Slack app you install to your workspace, whose
+  manifest PROVIDERS.md gives; a Discord bot you invite to your server), which `accounts sign-in slack` or `discord`
+  reads from stdin, never a flag, and keeps in this machine's keychain. Each token can be given in
+  `CONCEPT_SCANNER_GOOGLE_DRIVE_TOKEN`, `CONCEPT_SCANNER_SLACK_TOKEN` or `CONCEPT_SCANNER_DISCORD_TOKEN` instead, and
+  none of these variables can be set by a repository's `.env.local`.
+- **A concept below the minimum distinctiveness score is kept when its distinctiveness axes corroborate it** (scan
+  result schema 3.5.0). A concept characterization scored below the minimum (0.5) is asked its distinctiveness axes
+  too, and ships when two of its technical distinctiveness, `why` and `where` reach the rescue's moderate floor (0.4)
+  or one reaches its strong floor (0.5), **and the corroboration gate keeps it too**; every concept that shipped
+  before still ships. Two conditions this entry did not state until 2026-10-30: a concept the rescue's floors
+  reach is kept only if the corroboration gate, asked next, judges it and does not hold it, so a concept with a
+  strong `why` and a distinctiveness of 0.2 stays held; and on the one-axis path technical distinctiveness is held
+  to the higher of the strong floor and the minimum score, so raising the minimum raises that floor with it and the
+  score the minimum refused never keeps a concept alone. Each kept concept is in the
+  held-back record as `rescued_below_minimum`, with the scores that kept it, and counted in `score_rescued`;
+  `score_rescue_calls` counts the extra axes calls this costs; `textbook_held` and `low_score_held` now count only
+  what the rescue did not keep, each detail saying how its axes stood. `--no-axes` and `--include-textbook` run no
+  rescue, and its counts are then `null`. The floors are settings (`--score-rescue-moderate-floor`,
+  `--score-rescue-strong-floor`, or saved with `init`). On three measured lists with `qwen3-coder:30b`, replayed from
+  recorded answers, it kept 9 of 17, 5 of 11 and 1 of 7 held concepts, so those scans would ship 15, 14 and 16 concepts
+  where they shipped 6, 9 and 15.
+- **`scan` takes `--redact` and `--accept-preview`, for a source that holds other people's words** (a Google Drive
+  folder, a Slack channel or a Discord channel, and a person's documents, below). Where its text goes is decided by every model the run calls,
+  not by the server's address alone: on a model server on this machine the scan asks the server where it runs each,
+  and a model it sends to another machine (an Ollama cloud model, once you have signed in to Ollama) counts as that
+  machine; a model chosen later, on the models screen, is asked about before its first call. On a server on this
+  machine that runs each model itself the text is read as it is, and the scan says so, and that a server there that
+  sends its requests elsewhere without saying so (a proxy at a loopback address) cannot be detected. Sent off this
+  machine, the text is first blurred by class: `personal`, `organisational`, `temporal`, `structural` and
+  `join-keys`, all five unless `--redact` names fewer (or `none`, which blurs nothing; an empty or blank name is
+  refused). That is a courtesy blurring of names for readers who already know the parties, not a guarantee, so the
+  scan writes the whole text it would send to `~/.concept-scanner/previews/<digest>.txt`, which only your account can
+  read (never the data directory), shows what each class blurred and the text's first lines
+  (`--preview-sample-lines`, 40), and sends it only when you accept it: at a terminal it asks; anywhere else, `--json`
+  included, it stops, its answer naming the file, the digest, the counts and that sample, never the whole text, and
+  the line that sends it (`--accept-preview <digest>`) is said for you to type, in a step that runs nothing, so
+  neither the window nor an agent sends other people's words on your behalf. The digest covers the server, every
+  model the run calls, the classes and the text, so a different text, server or model is asked about again.
+  `models.json` records what was decided (`source_gate`, models record 1.12.0: the models, whether the server could
+  be asked, the models it runs elsewhere, the classes, the replacements and the digests). Both flags are refused for
+  a repository or a folder scanned in place, which hold no one else's words, and on a server on this machine that
+  runs each model itself; a scan of `documents:<path>` or an upload takes them, its documents being a person's. `combine`, `locate`, `patterns` and `figure draw`, run later on such a scan, send its concepts (and the
+  files under `--workspace`) off this machine only to the server and models its preview was accepted for, and only
+  while those files are still the text accepted; otherwise they refuse and offer the run on this machine. Two scans
+  of one such source at once are refused, the second naming the first's process, since the gate rewrites the fetched
+  copy in place. The blurring's rules were widened by review: North American and Brazilian phone numbers, a listed
+  organisation spelled with a hyphen or an underscore and its repositories written owner/name, sums written
+  `USD 5,000` or `1.2 million dollars`, and a time zone with its offset; and narrowed: a listed name that is also an
+  ordinary word or of two letters (Will, ON) is matched only as written, `Safari.app` is not a domain, and "may" is a
+  month only as May. A file named by a day keeps its date recoverable from its new name, an unkeyed digest a reader
+  can recompute by trying each day, which the `join-keys` class's residual says.
+- **A scan reads a private GitHub repository with your own GitHub App.** Give its address, `concept-scanner scan
+  https://github.com/<owner>/<repo>`, and the scan clones it with `CONCEPT_SCANNER_GITHUB_TOKEN`, else the token
+  `accounts sign-in github` kept in this machine's keychain, else `GH_TOKEN` or `GITHUB_TOKEN` as GitHub's CLI and
+  Actions set them; with none, a public repository is cloned as before, and a repository you have checked out is
+  scanned as a folder with no token. When GitHub refuses a token, the scan renews it once if the keychain keeps it,
+  then clones again with no token, where your own git credential helpers answer, so a stale `GITHUB_TOKEN` never
+  stops a clone that works for you; no clone starts a program to ask for a password (`GIT_ASKPASS`, `SSH_ASKPASS`).
+  The token is sent to GitHub through git's own configuration in git's environment: never on a command line another
+  account could read from the process list, never in the clone's `.git/config`, and never in an error, a notice or a
+  `--json` answer. Only that exact form of address is read this way; any other (`git@github.com:`, `ssh://`, an
+  address carrying a user or a token) is cloned with your own git credentials as before. A clone GitHub refuses says
+  whether a token was given and where it came from, and offers the sign-in when none was. Tested against a local
+  git remote and stand-ins of GitHub's sign-in, the refused header among them; not yet run against a private
+  repository on github.com with a real App.
+- **`accounts`: sign in to a source with your own client, sign out, and list** (`accounts sign-in github`, `accounts
+  sign-out github`, `accounts list`). This program has no client of its own. For GitHub, register a **GitHub App** of
+  your own, asking for one permission, Contents read-only, with Enable Device Flow ticked, install it on the accounts
+  whose repositories you scan, and give its Client ID once with `init --client-source github --client-id <id>` (or in
+  `CONCEPT_SCANNER_GITHUB_CLIENT_ID`); README.md, "Your own GitHub App", gives the steps. The sign-in prints a page and
+  a code to enter there, and keeps a token that expires in eight hours, with a refresh token, which a scan renews a
+  few minutes before it expires; it takes and sends no client secret. Tokens are kept in the macOS Keychain, the
+  Windows Credential Manager or a Linux desktop's Secret Service. Where there is none (a container, the GitHub Action,
+  a machine with no desktop session), or where it cannot keep a check value written before you are sent to the
+  provider, the sign-in is refused, saying why, and the token goes in a variable instead; no token is ever written to
+  a file. A scan asks the keychain only for a source a sign-in recorded keeping a token for (in `settings.json`, the
+  source and when, never the token), and waits for it at most `--keychain-wait` (a minute). The sign-in says which
+  token a scan will read (`scan_reads`). `accounts list` says where each client and token come from, never what
+  either holds, with a client id shown by its last four characters at most. `init --client-source <source>
+  --with-client-secret` reads a client secret from stdin for a provider whose sign-in takes one (Google Drive's), and
+  `init --remove-client <source>` removes a saved client.
+- **Each shipped concept says what kind of source it was read from** (`provenance.source_kind`, output schema 2.5.0):
+  `folder`, `git` or `github` today, and `google_drive`, `slack`, `discord` or `upload` as those sources are added. It
+  names the kind only, never an address, an account or a token, and is `null` on a concept stored by an earlier
+  version.
+- **Scan your documents: `scan documents:<folder>`, the `upload` commands, and the window's Upload screen.**
+  A folder of Markdown, text, PDF and Word (`.docx`) documents, or one of them, is read with `scan
+  documents:<path>`: Markdown and text as they are, a PDF's text layer and a `.docx`'s body, each written as
+  Markdown into a folder of its own under the data directory (`paper.pdf` is read as `paper.pdf.md`), which the scan
+  then reads the way it reads a folder of documentation. A document that is not read is named with why, in the run's
+  lines, the `--json` notice and `source.json` beside the scan, never left out in silence: a kind no reader takes, a
+  hidden file or folder, a link (none is followed), a PDF with no text layer (a scanned page is an image, and no text
+  is recognised from an image), a PDF whose text layer holds too few letters to be words, a damaged file, or one over
+  a bound, or a file or folder this program may not open (the rest of the folder is still read). A Markdown file of
+  yours keeps its name over the text of another document that would take it (`notes.pdf.md` beside `notes.pdf`: the
+  PDF is named as not read, saying why), names that differ only in case or in how an accent is encoded are one name,
+  and no text is ever written over another's. Text a tracked change deleted from a Word document is not read.
+  `source.json` also records how each document was read, its pages, the bytes of text kept and where that stopped.
+  Every PDF and Word document is read in a process of its own, which ends itself past `document-read-timeout` (as
+  `upload read` run by hand does) and past `document-read-memory`, counting every byte it holds, its stacks included,
+  one stack at most a sixteenth of that; it runs in a process group of its own and ends with the scan or upload that
+  started it however that ends (stopped from the window, by a signal, or killed; tested on macOS, and built for Linux,
+  where the kernel ends it, and Windows, where a job object does). So a document built to loop,
+  exhaust memory or crash the reader is named as not read and the scan goes on. **A person's documents are treated
+  as holding other people's words**, as a shared drive or a chat channel is: on a model server on this machine their
+  text is read as it is; sent to one on another machine it is blurred first, the names the documents' own metadata
+  gives (a Word file's author, last editor, manager and company, a PDF's author) among what is blurred, and sent only
+  once its preview is accepted (`--redact`, `--accept-preview`, below). `upload add --name <file> [--to <upload>]`
+  keeps one document, given on stdin, in an upload a scan then reads, and refuses one a scan would not read, with
+  why, including one whose text a scan would write under another document's name, or that would leave another
+  unread; a document named as one already kept, in any case, replaces it. `upload read --name <file>` prints the text
+  a scan reads from one document. The window's **Upload** screen runs `upload add` for each file you choose, shows
+  the text a scan reads from each, says what a scan does with them on a model server elsewhere, and offers to scan
+  the upload. The bounds are settings: `document-max-bytes` (25 MiB), `document-max-text` (500,000 bytes),
+  `document-max-pages` (2,000), `document-max-part-bytes` (64 MiB of a `.docx`'s body), `document-read-timeout`
+  (60 s), `document-read-memory` (1,024 MiB), `document-min-letter-share` (0.30), and the window's `max-upload-bytes`
+  (25 MiB). Folders a code repository's tiers leave out (`tests`, `examples`, `fixtures`) are read in a documents
+  scan. PDF text is read with `github.com/ledongthuc/pdf` (BSD-3-Clause, pure Go), at its commit of 2026-10-20, which
+  bounds how deep a PDF's objects nest and ends an unclosed array or string at the end of its input.
+- **A scan holds back what its distinctiveness axes do not corroborate** (scan result schema 3.3.0). A concept the
+  model scored at or above the commonness ceiling (0.7), or below both the distinctiveness floor (0.4) and the depth
+  floor (0.5), is held back unless two of its technical distinctiveness, `why` and `where` reach the moderate floor
+  (0.4); below both floors, one at the strong floor (0.7) also keeps it, except over the ceiling or in a `scripts/`
+  folder. These are the values a consumer of this output applied to every concept it imported, which it no longer
+  does: the hold is now made here, before combinations are composed. Each held concept is in the held-back record under
+  `not_corroborated`, with the scores that decided it, and counted in `corroboration_held`; `--include-textbook`
+  keeps them. A concept with no axes (`--no-axes`, or a call that failed or was not sent), or with incomplete ones
+  that do not keep it, is not judged and ships, where that consumer held it. Each value is a setting
+  (`--corroboration-moderate-floor` and four more, or saved with `init`). On three measured lists with
+  `qwen3-coder:30b` the gate held nothing a scan ships, at a moderate floor of 0.4 or 0.6: the model scored only 2 of
+  65 concepts at the commonness ceiling, both already held by the minimum distinctiveness score. `combine
+  --workspace` and `locate` do not apply it, as they apply no other gate to the stored concepts they change.
+- **A scan says what its corroboration gate could not judge, whether it ran under `--include-textbook`, and when Pass
+  5 ran** (scan result schema 3.4.0). `corroboration_not_judged` counts the concepts that tripped the gate without the
+  distinctiveness axes that decide them, which ship; each is also in the held-back record as
+  `corroboration_not_judged`, and the run's caveat and summary say how many. It is `null` under `--include-textbook`,
+  which judges nothing. `include_textbook` is `true` or `false` on every scan, so a consumer can tell held counts of 0
+  under the flag from gates that held nothing. `synthesized_at` is when the latest Pass 5 run, by `scan --patterns` or
+  `patterns`, attached its patterns, in UTC to the millisecond, and is absent when none did.
+- **Each shipped concept carries `excerpt`, the text of the lines its location cites** (output schema 2.3.0). It is
+  cut from the same read of the file as the lines, so it always describes them. `--excerpt` chooses how it is
+  written: `verbatim` by default, the file's own text, which a reader should present as a quotation of that file and
+  those lines; `scrubbed`; `scrubbed-marked`, which says per concept whether the scrub changed the text; or
+  `omit-on-hit`, which writes no text where the lines hold a banned phrase and says why. A concept with no lines, and
+  a span in a test file whose data cannot be masked, carry the reason in `why_none`; a span in a test file has the
+  test's data masked (a placeholder in Go, blanked in JavaScript, TypeScript and Python), and says so. Excerpts make a scan's JSON answer markedly larger: on three
+  measured scans of one repository it grew by 68% to 85%.
+
+  **The span is often not the part of the file the summary is about, and that is measured.** The lines are the
+  declarations a concept's own text names, so where its text names few of them the span can sit beside the
+  mechanism rather than on it. On 195 concepts from three scans, two independent labellers between them named 39,
+  20%, as not holding the mechanism the name and the summary describe, and the rate turns on how many declarations
+  the text names: 26 of 51 where it names exactly one, against 1 of 78 where it names two or more. The excerpt is
+  a correct span of the file it cites; it is frequently the wrong span for the concept, and a reader should check
+  it against the file rather than take it as the mechanism.
+- **Each shipped concept carries `axis_distinctiveness`**, three axes of how distinctive the mechanism is: what it
+  does, why it is there and where it sits in the codebase, asked together and not yet shown to be independent of
+  each other. Each is one of four named levels
+  (recorded as 0.2, 0.4, 0.6 or 0.8) with a sentence saying why (output schema 2.4.0); a number a model writes instead
+  is kept, as the core axes keep one, so a value can be any number from 0 to 1. They are asked in a call of their own after
+  the quality gates, one drafting-model call per shipped concept, so characterization's answer and its scores are
+  unchanged. `--no-axes` skips the call, and `--budget-axes` bounds its answer. Measured with `qwen3-coder:30b`, the
+  call took 5 to 17 seconds a concept on average and every answer carried every field. `combine --workspace` asks
+  the axes again of each concept it characterizes again, and `locate` of each concept it moves to another file, so
+  neither keeps axes judged on what the concept was, and a concept `locate` finds gets the axes its scan could not ask
+  of it. Neither asks when the scan was run with `--no-axes`, or of a concept a version before this one stored; one
+  whose call is not sent or fails is left with none rather than the old ones. Both commands take `--budget-axes`.
+- **A scan's JSON answer says which settings the run changed** (`settings_changed`, scan result schema 3.1.0): every
+  default or output budget the scan read whose value differed from the built-in one, with where it came from, `[]`
+  when none did. Compare two scans' classifications, confidences and held-back counts only when these agree.
+- **A concept's name attenuation, description grounding and model agreement each carry their own `schema_version`**,
+  and an exported concept's arrows carry `component_edges_schema_version`.
+
+- **`review --sort group` lists together the concepts that are one finding, or that one scan's exact redundancy
+  relations join.** It is the score order with each group listed where its first member stands: the copies of one
+  finding that two passes of a scan history read (a concept another pass found again in the same file, under the same
+  name or naming the same symbols, which review already showed once; and now also a second concept of one pass that is
+  the same finding as a third pass's, which review shows apart), and the pairs a scan's `redundancy.json` records (one
+  concept's summary inside another's, or within one file a subset of its words or of the identifiers its name shares
+  with the file), never its near-duplicate names, which are a scored similarity. The window offers it beside "by score"
+  and "by file". A scan that wrote no `redundancy.json` (its check examined nothing, or it was stored before the
+  record existed) has nothing to join, and review says so in the terminal and in the `--json` notice.
+- **`review --sort group` says a record is missing only for a pass whose concepts it shows**, so a pass of a scan
+  history that shipped nothing is not named for a `redundancy.json` it had no reason to write.
+
+- **`review` says which order its list is in and what that order rests on.** There was no such line before: the
+  terminal printed nothing about the order and the `--json` answer named it only as "sort". Every surface carries
+  the note now, the terminal, `review --json`'s notice and the window, and the order is not chosen by hand: the
+  default is read from committed measurements of how well each signal this scanner writes separates the mechanisms
+  worth reading from the routine ones, and it moves to a measured signal as soon as one reports. **The baseline has
+  reported and nothing it measured separates the two groups**, so the default is the score, as it was, and the note
+  says what that means: `technical_distinctiveness` was read at 0.54 over 118 labelled rows on 2026-10-29, where a
+  signal carrying nothing about the two groups reads 0.50, so no number says the list is ranked and the top of it is
+  a starting point. (This bullet said "nothing has reported" until 2026-10-30, which the reading of 2026-10-29 had
+  already made false; the note the program prints had stopped saying it and this sentence had not.) A figure reaches the note only by being committed as a result, and
+  a reading taken on models a scan did not run is said to exist with its number withheld, since one corpus's
+  figure printed on every scan would read as a property of that scan. `--sort` is unchanged, `--sort score`,
+  `file` and `group`, and every concept still shows its own score in all of them.
+
+- **A re-read of changes carries an earlier pass's characterization where nothing that decides it changed.** A
+  `--changed` pass re-runs each discovery call that held a changed file, so it finds again the concepts of the files
+  beside it, and it characterized every one of them again. Now a concept in a file that has not changed, which is the
+  same finding as one an earlier pass of the scan history characterized (the same file, and the same name or the same
+  code symbols named), keeps that characterization with no model call when everything that decides the answer is the
+  same: the drafting model, the model as served (its digest, its server's version and address), the request's settings,
+  the prompts, and the file and the part of it the request carries. A concept whose earlier answer was incomplete, or
+  was changed since (by `combine --workspace` or a correction), is asked again. The run says how many it carried and
+  how many with such a copy it asked again, and why; `union.json` names each carried concept's earlier copy
+  (`characterized_by`, union.json 1.8.0), and `arc.json` records what decided each concept's characterization
+  (`characterized`, arc.json 1.18.0), so only passes made by this version or later are carried from. Pass 2 is never
+  carried, nor is the distinctiveness axes call, nor anything under `--two-phase`. The time this saves on a re-read
+  has not been measured.
+- **A carried characterization is matched on the requests as this version builds them**, with the concept's own words
+  left out: an upgrade that changes a prompt's wording, how a file's text is put into a prompt, or how a test's data is
+  masked asks again, and so does a large file sent whole by one pass and as a part by the next. The run counts a concept
+  as asked again only when a call was sent; one whose file is too long for the window is said apart, with the window as
+  its reason. An earlier answer that left technical distinctiveness unscored is not carried, so a re-read asks for it.
+  Whether a concept is the same finding as an earlier one is read from `arc.json`, which records each characterized
+  concept's name, file and named symbols beside its key (arc.json 1.19.0), and not from the stored concepts.
+
+### Changed
+
+- **`review`'s note on what its order rests on no longer prints internal names: not the file the
+  measurement is filed in, and not the repositories it was measured over.** All six of the sentences that say how well the ordering signal separated the mechanisms worth
+  reading from the routine ones ended in a baseline document's own name, so the note handed its reader a
+  maintainer's filing that reader has no way to open. What the sentence owes is that the figure comes from a
+  committed result rather than from this program, and it already said exactly that in words, with the
+  reading's own date beside the figure, so the file name was the one part of it nobody outside could use.
+  The figure, its interval, the labelled-row count, the labeller and the date are unchanged, and **the
+  labeller stays on purpose**: a figure printed with no labeller attached would read as the measurement
+  rather than as one of two readings of the same rows. The name is kept on the reading itself, where two
+  checks over the committed results depend on it, and a guard now holds the property over every order and
+  both verdicts, because six separate concatenations carried it and a seventh is one edit away.
+
+  **And it says how many repositories the figure was measured over rather than which.** The same sentence
+  named all three, one of them a corpus whose contents are deliberately unpublished, and this is the first
+  release to carry that reading, so the change arrived before the note was ever a public surface for it. Naming
+  them was doing one job, telling a reader the figure was not measured on their code, and a count does that
+  job whole, so the sentence now reads "in 3 repositories" and the names stay in the committed result where
+  the figure itself is stated. A reading carries the count and not the list, so a corpus name cannot reach
+  the note or the compiled binary without a compile error, and a built binary holds none of them: the two
+  controls read beside it, the labeller and the signal's own name, are both still present.
+
+- **A released binary no longer carries the absolute paths of the machine it was built on.** Both release
+  configurations now pass `-trimpath` in every build they define, so a source path in a panic, in a log
+  line or in the binary's own tables is module-relative. Measured on two builds of one tree with the
+  release configuration: without the flag, 2045 strings hold the build machine's home directory; with it,
+  none, while a control string present in both is unchanged. **It removes where the machine was, not what
+  the program is made of:** the module-relative inventory of source file names is identical in both builds
+  at 410 names, and a stack trace gives that list either way. The guard over the release configuration
+  asserts the flag on every build of both files and fails on a configuration key it does not recognise, so
+  a flag added to one file and forgotten in the other is a failure rather than a silence.
+
+- **The 441 justifications behind this tool's registered numbers are no longer compiled into the binary.**
+  Every threshold, floor and default carries a paragraph saying who chose the number, from what, and
+  whether it was measured at all. Those paragraphs were string literals, so about 215 KB of internal prose
+  shipped inside every binary, Go identifiers and claims about one machine included. They now live in a
+  reference document that the registry's own tests read, so nothing was deleted and every number still
+  answers "who set this". Measured on builds before and after: 231,168 bytes smaller, and a marker common
+  to those paragraphs falls from 6 occurrences to 0 while a control string stays. This was never part of
+  what the tool prints: one such paragraph was printed verbatim by `review --why` until 2026-10-11, which
+  is why each gate now carries a plain explanation of its own, and the move means the prose that print was
+  removed for is no longer shipped either.
+
+- **The screen says how much of its own grid has no rule at all, beside what it caught.** Its rules were a list,
+  and a list can only report what it marked: a reader of "11 spans in 327 files" had no way to know what these
+  patterns have no pattern for, while the screen's own residual concedes that its recall is unmeasured. The rules
+  now sit on a closed grid, five acts (addressing a system, overriding instructions, suppressing output,
+  dictating output, assigning a role) by three cues (a word naming the reader, a verb phrase addressed to it, the
+  syntax of a prompt), and `screen.json` (schema 1.1.0) and the scan's own line carry `grid_cells` and the cells
+  no rule fills. On this release 8 rules fill 7 of 15 cells, and two of the empty ones are where measured planted
+  instructions walked through on 2026-11-01.
+
+  Two rules were split so that each sits at one cell, with **no pattern changed**: the rule that addressed the
+  reader as a model keyed on two different cues, and the rule called "suppresses-or-dictates-output" was two acts
+  in one pattern. A span that dictates an output is therefore reported under the new kind `dictates-output` rather
+  than under `suppresses-output`. Widening a rule's vocabulary is a separate decision and was not taken here: the
+  grid names the gap rather than filling it.
+
+- **A statement the source does not address can now be labelled SILENT, instead of being denied or left out.**
+  The extraction prompt offered ASSERT, DENY, QUESTION and QUALIFY, so a file that says nothing about something
+  had no label for it: DENY says the source states the contrary, and leaving the statement out is invisible to
+  every reader. SILENT is now the fifth label, in both places the prompt names the vocabulary, and the one list
+  the transform maps. Only this label was added: the two others the methodology distinguishes (CONTRADICTED and
+  UNRESOLVED) are plausible and unproven here, and five labels arriving at once would make any change in the
+  output unattributable to any of them.
+
+  The transform that reads a model's stance used to return ASSERT for any label it did not recognise, so a SILENT
+  from a model would have been recorded as the source asserting the thing it is silent about; it is now total over
+  the vocabulary, and a guard holds the prompt's two copies and that list to each other. This is internal to the
+  extraction: `stance` reaches no emitted concept, so no consumer sees a new value and no schema version moves.
+
+  **It costs one full-price multi-model run per repository, once.** The extraction cache keys on the prompt's own
+  text, deliberately, so that no prompt change can serve a stale extraction: adding a label to the prompt
+  invalidates every answer stored for the old one, and the first run after this change says so, removing the
+  folder that held them ("removed extraction cache folders no key leads to").
+
+- **Every model call now tells the model that imperatives in the files it is reading are statements to extract,
+  not instructions to it.** One sentence, in the wording the methodology guides use, added to each call's system
+  prompt at the one seam every provider is built through, so it covers every command, both scanner paths and any
+  prompt added later without anybody having to remember. The scan reads repositories it did not write, where a
+  comment or a docstring can address whatever model reads it, and nothing in the prompts said so before.
+
+  **Measured, and it did not stop one.** Two corpora, three planted instructions each, scanned with the sentence
+  and without, same model and same files. On the first, both arms reported the planted concept under the name and
+  the summary the comment asked for. On the second, both arms refused the planted name and both still let its
+  wording into a concept's name. So this is honest framing of the input and NOT a control, and the only thing that
+  detects such a file is still the screen, which marks what it recognises, filters nothing, and records its own
+  residual in `screen.json`. The screen marked two of the six plants. The measurement is one local 7B model over
+  two small corpora and says nothing about other models.
+
+  **It costs one full-price run per repository, once.** The three caches that key on a system prompt (discovery,
+  file roles, the characterization carry) now key on the prompt as sent, framing included, so answers stored by
+  an earlier version are not reused. Nothing changed about which files a scan reads, or about what it ships.
+
+- **`models --workspace` prices the files a scan given these flags reads, and each time says which file set it
+  priced.** `models` took none of the file-set flags, so it priced the whole repository whatever a scan was going to
+  narrow, exclude or drop, and so did the window's models card, which asks with the scan form's own fields. It now
+  takes the file-set flags (`--only`, `--exclude`, `--keep-dir`, the documents and tests flags and the rest) and
+  `--pin` and `--drop`, and prices the files a scan given them collects, less every dropped path. Each profile's time
+  names that set, "about 2h 10m (1h 30m to 3h) to read 136 files (1.8 MB)" where it said "for the whole repository",
+  and `models --json` carries the set's `files` and `bytes` beside each time. Given no such flag it prices every file
+  a scan reads, as before.
+
+- **The run's caveat says the rescue's floors are not yet calibrated.** Its sentence about concepts kept below the
+  minimum now ends "at floors not yet calibrated against labels", in the `--json` notice and on the terminal's
+  `Coverage:` line.
+
+- **`held --set` judges a concept the rescue kept.** It refused every row whose concept shipped, which is every
+  row the rescue kept, so the floors could not be re-derived from anybody's verdicts by the method their own
+  registry entries name. A rescued row now takes right or wrong, recorded as "the rescue's keep was ...", and
+  stays listed with the concepts that shipped; neither the waiting count nor the judged count, which are about
+  concepts held back, counts it. Every other row whose concept shipped is still refused, and `held --json`'s
+  recorded judgments say which verdict was judged.
+- **Google Drive's setup text names the Google Sheets API beside the Drive API**, since reading a sheet needs
+  both.
+
+- **`corroboration_held` is `null` where the corroboration gate did not run** (scan result schema 3.4.0). A scan
+  stored before the gate and saved again by a later command (a review decision, `patterns`, `combine`, `locate` or
+  `export`) wrote it as `0`, a hold no gate measured. Every scan this version finishes writes a number, `0` under
+  `--include-textbook`.
+- **The discovery and extraction caches ask once more after this upgrade.** Their keys are built from one list of what
+  decides a model's answer, the one a re-read's carried characterization is keyed by, so every answer they stored
+  before is asked again once; nothing they served is changed.
+- **A scan's JSON answer always carries `files_dropped_too_large` and `files_dropped_budget`** (scan result schema
+  3.2.0), `0` when no file was dropped for that reason, where they were left out at 0, so a zero read as "not
+  stated".
+- **A pattern's synthesis score stays between 0 and 1 whatever weights you set.** It is now the weighted mean of the
+  pattern's scores (the weighted sum divided once by the weights' total), where weights summing above 1 could score a
+  pattern above 1. At the
+  built-in weights, which sum to exactly 1, every score is unchanged.
+- **A pattern's `load_bearing_why` says why each of its members is load-bearing**, from the judgment Pass 5 made of
+  each member, where it repeated `core_mechanism` word for word.
+- **`provenance.part` is null wherever it does not describe the file the concept cites**, as a concept that locating
+  moved to another file no longer keeps its first file's byte range.
+- **`combine` refuses a scan id holding a character a stored scan's id never holds**, where it read the scan stored
+  under the id with that character deleted and named its combinations' members with the id as typed.
+
+- **Characterization answers each core engineering axis with one of four named levels, so scores are not comparable
+  with earlier versions.** Asked for a decimal from 0 to 1, the model put technical distinctiveness at 0.6 or 0.7 on
+  nearly every concept, so the score told concepts apart poorly and the minimum distinctiveness score held almost
+  nothing back. Technical distinctiveness, implementation depth, problem specificity, generality and commonness are
+  now four levels each, every level stated as a property a mechanism has, and the model answers with a level's name,
+  which the output records as 0.2, 0.4, 0.6 or 0.8; the fields keep their names, range and meaning. The minimum
+  distinctiveness score, 0.50, lies between the second level and the third, so it holds back a mechanism the model
+  places at `textbook` or `adapted`, and **far fewer concepts clear it**: measured on three repositories with
+  `qwen3-coder:30b`, 6 of 23, 9 of 20 and 15 of 22 scored concepts cleared it, against 21, 17 and 18 before.
+  `--include-textbook` still shows what it holds back, and `--characterized-min-score 0.3` (or the same value saved
+  with `init`) holds back only `textbook`. A concept's `confidence`, derived from the mean of the four core axes when
+  the model gives none, is now `medium` or `low` on nearly every concept: the `high` band, 0.75, needs three of the
+  four axes at their top level, and on those three repositories no concept reached it. Paradigm shift (a whole number
+  from 0 to 3), substrate specificity and the observability pair are asked as before. Compare scores only between
+  runs of one version. Characterization also takes longer: under the levels the model often leaves `category` out of
+  its first answer, and the second call that fills it, as it fills any missing field, added 17% to 36% to the
+  characterization runs measured.
+- **`review` breaks a tie on the score by classification, and shows each core axis's named level.** With the axes
+  answered as four levels, many concepts share one score, and among them "strongest first" fell to the file's name, so
+  a textbook concept in an earlier file came before a distinctive one. Among concepts at one score, `--sort score` now
+  lists the distinctive first, then the borderline, then the textbook (Pass 2's label, or the one derived from
+  discovery's score when Pass 2 gave none, as the score gate reads it), and only then by file; `--sort file` breaks a
+  tie on the file and the score the same way. The terminal, `review --json`'s concept sections and the window's
+  concept card show a core axis as its value and what that value means on the axis's scale, as `0.60 (unusual on the
+  scale)`, whether the model answered with the level's name or with the number; a concept written
+  by a version before the levels (output schema before 2.3.0), or a value that is no level's, shows the value alone.
+  `show`, which finds a concept in the same order, now takes `--textbook-score-ceiling` and
+  `--borderline-score-ceiling` as `review` does, since they decide the label of a concept Pass 2 gave none.
+- **`combine` gives the model concepts tied on score in a new order.** It reads a scan's concepts in `review`'s score
+  order, and among concepts tied on the score that order now puts the distinctive first, so which candidate
+  combinations `combine` asks about first, which of them its candidate limit keeps, and the order it lists them in can
+  differ from an earlier version's for the same scan. Its effect on what `combine` finds has not been measured. A
+  scan's own combinations, and `patterns`, read the concepts in the order the scan stored them and are not changed.
+- **Pass 5 finds more product-level patterns, and scores each one on its own.** Pass 5 (`scan --patterns`, or
+  `patterns`) asked the model for a list of combinations while its request held the model to a single JSON object, so
+  the model answered with one combination; it now asks for the list in the shape the request allows,
+  `{"combinations": [...]}`, and measured on three repositories with `qwen3-coder:30b` it found 4 combinations a run
+  where it found 1, every one of which a scan keeps. Its scoring step listed every pattern not yet scored in each
+  call, and a pattern's frame shift depended on which others were listed beside it (one fell from 0.6 to 0.3 beside
+  three others); each pattern is now scored in a call of its own, so its scores do not depend on what else the run
+  found. Scored alone, 3 of the 12 patterns measured scored a higher frame shift than beside the others, and none a
+  lower one. With `qwen3-coder:30b` that is as many calls as before; with a model that answered every pattern in one
+  call, it is one call a pattern, and `patterns --dry-run` counts the scoring step at its fewest, one call, before the
+  combination call has answered. Pattern scores are not comparable with earlier versions', and running `patterns`
+  again over a stored scan now finds more patterns. The note "Pass 5: 1 combination answer was one object where a
+  list was asked" now appears only when a model answers with one combination despite the shape asked for.
+
+### Fixed
+
+- **The screen no longer marks a Go assignment to a variable called `systemPrompt`.** Its pattern for a replaced
+  system prompt matched `system` followed by `prompt` and a colon or an equals sign, and `prompt, systemPrompt :=
+  FlattenForGenerate(messages)` is exactly that in camelCase: **9 of the 11 spans marked in a 327-file scan were
+  that one statement**, which is the only out-of-sample reading this screen's precision has ever had. It now
+  matches a colon that is not an assignment, so "System prompt: ignore the code below" and `<system>` still fire
+  while the assignments do not, and those nine lines are checked in as the set nothing may fire on, with the real
+  shape beside them as the control. The `=` forms are given up deliberately: they are assignments too.
+
+- **A scan's `timestamp` is the run's own start, so adding `duration_ms` to it lands at the real end.** Both the
+  envelope's `timestamp` and the run summary's `started_at` were taken when the result was constructed, which a
+  real scan reaches after discovery and Pass 2, while the duration is measured from the run's start. On one
+  measured scan the two origins were 39m 49s apart, so a reader adding them landed 40 minutes past the end and
+  SUMMARY.md's "Started ..." line was that late. The field's shape did not change and nothing computes with the
+  pair, so this is a correction rather than a contract change: in this program the timestamp is printed and never
+  added to, and the platform consumer reads neither field. Both scanner paths now take the value from one writer,
+  along with the scan id and the repository, which is also the parity that path pair lost once before when a whole
+  path reported no duration at all.
+
+- **A repository full of prose is no longer reported as a repository written in a language the scan cannot read.**
+  A scan of a patent-drafting repository warned that 1535 `.txt` files, which held claim text, specification text
+  and the output of reading scanned documents, were an unsupported language outnumbering the 193 code files the
+  scan had just read, and told the caller to add `.txt` to the extensions a scan reads, which would have put that
+  text in front of the model as source code. The same printed block already called those files documentation, four
+  lines further down. A format that is not a program has never dominated that check, which is why a `go.mod` does
+  not raise it; prose is now in the same position, so neither the claim nor that remedy is made for `.txt`, `.rst`,
+  `.adoc`, `.org` or any other documentation format, while a real language a scan cannot read still raises both. A
+  mostly-prose repository with almost no code still warns, with the reason that is true of it: too little was read
+  to be representative. Nothing changed about which files a scan reads, or about how the files left out are
+  counted and described.
+
+- **Reading more of a partial scan with `w` is no longer refused over a file the advice left out for you.**
+  The setup screens opened with sift's advised drops already marked, and `w` continues the last scan with the
+  intent and drops that scan SAVED, so it read the advice as a change you had made and refused, telling you to
+  press `w` without the change, which you could not do because the advice was added every time. It happened on
+  any repository where a role rule fires, which is most of them. The screens now open with your saved drops on a
+  session that offers `w`, and the advice is pre-marked only where it is not; either way each file's role is
+  still shown on its row, so you can take the advice with the toggle the row already has, and `s` starts a fresh
+  scan with it.
+
+- **A document reader says why it stopped even where its output is captured for a CI log.** The reader writes
+  the line naming its bound and then ends itself, and where this program captures its own output for a GitHub
+  Actions log that write was still in flight when the process ended, so the line was lost and the scan's reason for
+  not reading the document became "the process reading it ended without an answer". The reading now delivers what
+  it wrote before it ends, through the same path the signal handler already used. A reader a scan starts was never
+  affected, because it inherits the capture from the scan and installs none of its own; `upload read` run by hand
+  under a CI job was.
+- **A document reader past its memory bound stops growing.** `document-read-memory`, unchanged, is the bound a person
+  sets to keep a document built to exhaust memory from taking the machine, and it was always enforced: over 160
+  measured endings the watcher ended the reading process at its first look past the bound, every look before it
+  having been within the bound. What the process did after deciding to end was the defect. Past the bound it is also
+  past the collector's limit, where an allocation can wait on the collector while the parser keeps allocating, and
+  the reader formatted the line it ends with exactly there: in a fixture that grows 48 goroutines' stacks at once it
+  held a median of 449 MiB more memory, resident, than its watcher had counted when it decided to end, against 101
+  MiB less once both lines it can end with are made before the watch starts, which is what it now does. Ending
+  allocates nothing. The line it writes past the bound now also says what it held at the look that ended it and at
+  its look before, which `upload read` run by hand on such a document prints; the reason a scan gives for a document
+  it did not read is unchanged.
+- **`models --workspace` prices from this machine's recorded scans again.** It read no scan history at all, because
+  it is answered without opening the data directory, so every profile's time was the starting estimate set high on
+  purpose however many scans this machine had recorded. It now reads the history from the data directory a scan
+  writes to, reading it and never creating it.
+
+- **A Markdown heading holding inline code no longer ends a scan.** A heading such as ``## The `scan` command`` made the
+  semantic encoder (go-pbd v0.11.0) panic, which ended every scan of documents, an upload, a docs-only repository or a
+  Drive, Slack or Discord channel holding one. go-pbd v0.11.1 reads such a heading, and a defect inside the semantic
+  encoder now skips semantic batching with the reason said, while the scan goes on reading every file by size.
+
+- **No string of an emitted record holds U+0000.** The axes call quoted a Go key's separator as `\u0000`, the parse
+  decoded it, and a concept shipped a real U+0000, which is valid JSON and which a consumer's database refused.
+  Every string a concept, a combination or a pattern reaches now has it replaced with U+2400 (SYMBOL FOR NULL),
+  through fields, pointers, interfaces, slices and maps including their keys, and the excerpt and the provenance
+  with them, which the vocabulary scrub deliberately skips. Each record changed is one warning naming the record,
+  its id and the fields by their JSON path. An export applies it again, so a concept stored by an earlier version
+  is cleaned when it is exported.
+
+- **A held concept's name, summary and axis reasons are scrubbed in the row a person reads.** A ledger row copies
+  them when the row is recorded, which for most verdicts is before, or instead of, the shipped concepts being
+  scrubbed, so `held`, `held --json`, review's held-back section and the window showed a held concept's summary as
+  the model wrote it. Every row is scrubbed now, where it is built and by one rule, its id and its detail with it,
+  in place of the two fields one path scrubbed by hand.
+
+- **The corroboration gate holds a concept missing its `why` or `where` axis when no score of that axis would keep
+  it.** It shipped every such concept unjudged; it now asks with the missing axis at its highest score and holds the
+  concept back if it would hold it even then. Nothing changes at the built-in values; with a raised moderate floor,
+  or for a concept below both floors that is over the commonness ceiling or in a `scripts/` folder, such a concept is
+  now held.
+- **`locate --workspace .`, or a workspace path through a link, no longer clears every concept's `provenance.part`**,
+  and characterization reads a part under such a workspace; the file a part describes is compared in the workspace's
+  own terms.
+- **A test file holding JSX (`.tsx`, `.jsx`) has its JSX text masked as data** before characterization, the axes
+  call or an excerpt reads it, where JSX text crossed unmasked.
+- **A `//line` directive no longer numbers a Go concept's lines**: a generated parser's concepts cited lines of its
+  grammar file, past the end of their own.
+- **An export of a concept whose file was renamed and edited carries no lines, excerpt text or part of the old
+  content** beside the new path; a pure rename keeps them.
+- **`combine` refuses a scan id spelled otherwise than the stored scan's** (on a case-insensitive disk `SCAN-17` opens
+  `scan-17`), whose members would have been named by an id no scan has.
+- **Export applies a stored excerpt's mode to its text again**, as it scrubs every other field there; a mode this
+  version does not know is scrubbed; and an omitted excerpt no longer says its test data was masked.
+- **An axes answer naming no level and giving no reason counts as unanswered**, where it shipped six nulls; an axis
+  reason that copies a test's data is refused, as characterization refuses a copied field; and the setup screens' `A`
+  switch reaches the estimate.
+- **A scan's run summary lists files over the read cap under "Not run or capped".** A file larger than
+  `--max-file-size-bytes` was named in the run's caveat ("1 file over the 102 KB read cap: big_table.go (110 KB) is
+  not read; a scan given --max-file-size-bytes 110074 reads it") and counted in "Files analyzed", and left out of the
+  summary's list of what the run did not read with the flag or command that reads it, which `summary.json`, the
+  `--json` answer's `summary` and the window show. It is a line of that list now, worded as the caveat words it.
+- **`combine` says what the candidates it skipped are.** A re-run skips every candidate that is the same combination
+  as one an earlier run over the scan asked about, by the rule that folds near-duplicate combinations (most of its
+  concepts, or at least three, in common), so it skips candidates no run asked about too, and its notice said "it
+  skipped 40 candidates an earlier run over this scan asked about" where the earlier run had asked about 5. It now
+  says "it skipped 40 candidates, each the same combination as one an earlier run over this scan asked about", and
+  so do its note, its `--dry-run` and the help. What a re-run asks about is unchanged.
+
+### Security
+
+- **A source that holds other people's words reaches only the destinations you approved, and the ones you did
+  approve are no longer refused.** The seam that asks the model server where it runs each model treated every
+  forwarded model the same way, whatever you had agreed to, and the two paths got that wrong in opposite
+  directions. A scan whose blurred preview you accepted installed no check at all, so a model pulled after the
+  preview that your server forwards somewhere else took the text to a host the preview never named. A command
+  over a stored scan installed a check that refused every forwarded model, including the exact model and host
+  its own pre-flight had just accepted, so the run failed after saying yes. The check now carries the pairs the
+  acceptance named: those go through, every other destination is refused before anything is sent, and a scan
+  whose text stayed on this machine, or one run with `--local-only`, still refuses every forward as before.
+
+- **A command run over a stored scan cannot send a personal source to a model on another machine without the
+  preview.** `combine`, `patterns`, `triage` and `figure draw` ask the model server which models it runs
+  elsewhere, and a model the server had not pulled yet answered nothing, so the check passed before it read the
+  scan's own gate and the command then pulled that model and sent the scan's concepts through it. Those commands
+  now hold the same seam a scan holds, so a model pulled after the check is refused rather than sent to, and a
+  scan's accepted preview covers a later run only where it names that run's forwarded models and hosts, which is
+  what the preview's digest always covered and its record did not. A run refused this way says so and offers the
+  run on this machine.
+- **`init` shows a credential as set whatever case its variable is named in.** The setup `init` prints, in
+  `--json` and on the window's Settings screen, admits a variable by its `CONCEPT_SCANNER_` prefix, which any
+  casing of the rest of the name satisfies, and it hid the value by matching the name exactly. So
+  `CONCEPT_SCANNER_Slack_Token`, `CONCEPT_SCANNER_api_key` or any other spelling that is not the upper-case one
+  was shown with the key itself where only "set" belongs. The name is now folded on both sides. This matters most
+  on Windows, which reads the environment without regard to case, so there such a variable is the token a scan
+  really sends. The same fold was already in place for the two other decisions this program makes from a
+  variable's name, which `.env.local` refuses and which git may not inherit.
+- **`.env.local` denials hold in any case.** A file in a scanned repository could set a denied variable by writing
+  its name in another case: `CONCEPT_SCANNER_api_key`, `CS_Remote_Extra_Body` or `CS_Budget_Discovery` passed the
+  `CS_` and `CONCEPT_SCANNER_` prefixes and missed the denial, and on Windows, which reads the environment without
+  regard to case, each was then the denied variable itself. Every name is now compared in upper case, as git's own
+  repository variables already were.
+- **A secret given where it does not go is not repeated.** `init --with-key=<key>` was refused by quoting the key,
+  and `accounts sign-in <name>` and `init --client-source <name>` repeated a name that was not a source, which a token
+  given in the wrong place then was; none of these refusals repeats what was given. `init --client-source` takes only
+  a source whose sign-in uses a client (it saved a client under any name).
+
+- **A scan of a repository address carrying a credential keeps it out of the clone's folder name and out of every
+  error.** An address whose query holds a key (`https://host/repo.git?access_token=...`) was cloned into a folder the
+  key named, which `--verbose` and any failure naming the folder repeated; and when the clone failed, the scan's
+  error, as the terminal and the `--json` notice print it, repeated the key, because git keeps an address's query
+  when it names one it could not reach. The folder is now named for the address without its credentials, and every error
+  fetching or checking the repository returns has them removed. An address with no credential, an `@` in its path
+  included (`https://host/org/repo@v2.git`), is cloned where it was, and an error names it as given.
+- **A repository address in capitals, with a space around it, or written `ssh://` is read as an address, never as a
+  folder.** Only a lower-case `http://`, `https://` or `git@` at the very start was, so `HTTPS://user:token@host/r.git`
+  was refused as "directory not found" with the token in the error, the `--json` notice and the step to run the scan
+  again. Any target holding `://` is now an address: `http://`, `https://` (in any case, the space around it ignored)
+  and `ssh://` are cloned; `file://` is refused, saying to give the folder's own path, since cloning it would run
+  git on a repository on this machine; and any other scheme is refused naming those that are cloned. Every refusal
+  of a target names it without its credentials.
+
 ## [4.0.1] - 2026-10-22
 
 **The three findings 4.0.0 left open from the security review after PHP2Shell are closed.** A Go repository you scan
@@ -238,6 +1134,9 @@ found (Security, below), and it is built with Go 1.27.3.
   model. A stage that cannot be priced yet is named and the figure says "at least"; a stage whose calls are larger than
   any recorded is said to be extrapolated. `arc.json` (1.16.0) and the saved plan (1.9.0) carry `whole_seconds`, its
   range, `whole_not_priced`, `whole_starting` and `extrapolated`.
+  The setting `whole-range-min-runs` (the fewest earlier scans that ratio was drawn from) went with it: a saved value
+  is set aside with a note, and `init --reset whole-range-min-runs` removes it. (Added on 2026-10-26: 4.0.0 shipped
+  the removal without saying it.)
 - **`models --json` gives `relative_speed` only where a profile has no time** for the repository asked about.
 - **`combine` and `patterns` show the time left for their model calls**, forecast by the same counts their dry runs
   give.
